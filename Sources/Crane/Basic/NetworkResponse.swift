@@ -11,7 +11,9 @@ public protocol NetworkResponse {
 }
 
 // MARK: - JSON response
+/// HTTP response with JSON body.
 public protocol JSONNetworkResponse: NetworkResponse, Decodable {
+  /// Decoder used to decode json for response body.
   static var jsonDecoder: JSONDecoder { get }
 }
 

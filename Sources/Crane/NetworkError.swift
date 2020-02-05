@@ -14,6 +14,8 @@ public enum NetworkError: Error {
   case unableToEncodeRequestBody(reason: Error)
   /// Making request failed
   case unableToMakeRequest(reason: Error)
+  /// Received response is not valid/expected
+  case invalidResponse
   /// Received http status code is not valid/expected
   case invalidResponseStatusCode
   /// Response failed to decode
@@ -22,4 +24,6 @@ public enum NetworkError: Error {
   case internalInconsistency
   /// Network session became closed or killed
   case sessionClosed
+  /// Other error specific to concrete operation
+  case other(Error)
 }

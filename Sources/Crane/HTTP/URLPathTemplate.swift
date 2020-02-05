@@ -24,8 +24,7 @@ public struct URLPathTemplate {
     using components: URLComponents,
     with parameters: URLParameters,
     and query: URLQuery
-  ) -> Result<URL, NetworkError>
-  {
+  ) -> Result<URL, NetworkError> {
     var components = components
     do {
       components.path
@@ -44,7 +43,38 @@ public struct URLPathTemplate {
     } catch let networkError as NetworkError {
       return .failure(networkError)
     } catch { fatalError("Unreachable") }
-    components.queryItems = query.items
+    components.queryItems = query.allItems
+    guard let url = components.url
+      else { return .failure(NetworkError.invalidURL) }
+    return .success(url)
+  }
+    
+  /// Prepare local file/folder url based on template and provided arguments.
+  /// - parameter parameters: URL parameters to be used.
+  /// - parameter query: URL query to be used.
+  /// - returns: URL that is result of combining arguments with template or error.
+  public func buildLocalURL(
+    with parameters: URLParameters
+  ) -> Result<URL, NetworkError> {
+    var components: URLComponents = .init()
+    components.scheme = "file"
+    do {
+      components.path
+        = try "/"
+        + parts
+        .map {
+          switch $0 {
+          case let .raw(part): return part
+          case let .parameter(name):
+            guard let parameterValue = parameters[name]
+              else { throw NetworkError.missingURLParameter(name) }
+            return parameterValue
+          }
+        }
+        .joined(separator: "/")
+    } catch let networkError as NetworkError {
+      return .failure(networkError)
+    } catch { fatalError("Unreachable") }
     guard let url = components.url
       else { return .failure(NetworkError.invalidURL) }
     return .success(url)

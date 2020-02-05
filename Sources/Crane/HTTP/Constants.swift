@@ -1,3 +1,5 @@
+// Please look at RFC2616, RFC7230 and RFC7540 for details
+
 private let httpTokenCharacters: Set<Character>
 = [
   "\u{1f}", "\u{21}", "\u{23}", "\u{24}", "\u{25}",

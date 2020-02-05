@@ -5,7 +5,7 @@ import Foundation
 public struct URLQuery {
 
   /// All stored query items.
-  public var items: [URLQueryItem] { store }
+  public var allItems: [URLQueryItem] { store }
   public var isEmpty: Bool { store.isEmpty }
 
   private var store: [URLQueryItem] = .init()

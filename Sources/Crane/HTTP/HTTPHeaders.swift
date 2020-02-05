@@ -9,6 +9,9 @@ public struct HTTPHeaders {
   /// Getting raw dictionary will not preserve more than once occurence of "set-cookie", random one will be used if any.
   /// - note: Header names are case insensitive but original strings are kept in unchanged form.
   public var rawDictionary: [String: String] { Dictionary(uniqueKeysWithValues: store.map { ($0.name, $0.value) }) }
+  /// All stored headers.
+  public var allHeaders: [HTTPHeader] { store }
+  public var isEmpty: Bool { store.isEmpty }
 
   private var store: [HTTPHeader] = .init()
 
@@ -49,6 +52,8 @@ public struct HTTPHeaders {
     }
   }
 
+  /// - warning: According to RFC2616, RFC7230 and RFC7540 "set-cookie" header might occur more than once.
+  /// Getting "set-cookie" header by name will return random one if any.
   /// - note: Header names are case insensitive.
   public subscript(name: String) -> String? {
     get {

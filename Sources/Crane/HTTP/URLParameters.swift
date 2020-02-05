@@ -2,6 +2,10 @@
 /// - note: Parameter names are case sensitive.
 public struct URLParameters {
 
+  /// All stored parameters.
+  public var allParameters: [URLParameter] { store }
+  public var isEmpty: Bool { store.isEmpty }
+
   private var store: [URLParameter] = .init()
 
   /// Set a parameter. It will replace previous one for the same name if any.
