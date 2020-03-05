@@ -1,4 +1,5 @@
 import Foundation
+import CraneParameters
 
 /// Structured set of http header fields.
 /// - note: Header names are case insensitive.

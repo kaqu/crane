@@ -1,7 +1,7 @@
 import Foundation
 
 /// Basic request expecting some response.
-public protocol NetworkRequest: RequestBase where Session: NetworkSession {
+public protocol NetworkRequest: Request where Session: NetworkSession {
   // MARK: - Type specification
   /// Response type associated and expected for this request
   associatedtype Response: NetworkResponse

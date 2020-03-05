@@ -1,18 +1,18 @@
 import Foundation.NSData
 import Foundation.NSDate
 
-/// Abstraction over any HTTP network request.
+/// Abstraction over any HTTP request resolved to HTTPRequest instance.
 /// Should be used as base for defining HTTP based request types.
 /// Request type contains base attributes of acctual network request.
 /// Request instance contains concrete request specific properties,
 /// that will be used to make that specific request.
-/// - warning: RequestBase is not intended to be used directly.
+/// - warning: Request is not intended to be used directly.
 /// Please use NetworkRequest, NetworkConnectionRequest, NetworkDownloadRequest
 /// or any other protocol describing specific request type.
-public protocol RequestBase {
+public protocol Request {
     // MARK: - Type specification
     /// Session type that can be used to execute this type of request and provide context to it
-    associatedtype Session: SessionBase
+    associatedtype Session: SessionContext
     /// Type of HTTP body for this request
     associatedtype Body
     // MARK: - Instance request parts
@@ -42,7 +42,7 @@ public protocol RequestBase {
     /// when executing specific request.
     /// Parameters should be specified by names between `{` and `}`
     /// in path i.e. `/service/{id}` contains parameter "id".
-    static var urlPathTemplate: URLPathTemplate { get }
+    static var urlPathTemplate: URLPath { get }
     /// Base url query for this request. Might be overriden be specific request.
     /// Default value is empty.
     static var urlQuery: URLQuery { get }
@@ -119,7 +119,7 @@ public protocol RequestBase {
 }
 
 // MARK: - Defaults
-public extension RequestBase {
+public extension Request {
 
   var urlQuery: URLQuery { [] }
   var urlParameters: URLParameters { [] }
@@ -200,7 +200,7 @@ public extension RequestBase {
 }
 
 // MARK: - Void body
-public extension RequestBase where Body == Void {
+public extension Request where Body == Void {
   static func encodeBody(_ httpBody: Body) -> Result<Data, Error> { .success(.init()) }
   var httpBody: Body { Void() }
 }

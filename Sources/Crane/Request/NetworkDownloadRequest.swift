@@ -1,12 +1,12 @@
 import Foundation.NSURL
 
-public protocol NetworkDownloadRequest: RequestBase where Session: NetworkDownloadSession, Body == Void {
+public protocol NetworkDownloadRequest: Request where Session: NetworkDownloadSession, Body == Void {
   /// Template for URL path used to save downloaded file.
   /// Might contain parameters that will be resolved
   /// when executing specific request.
   /// Parameters should be specified by names between `{` and `}`
   /// in path i.e. `/downloads/{id}.png` contains parameter "id".
-  static var downloadDestinationPathTemplate: URLPathTemplate { get }
+  static var downloadDestinationPathTemplate: URLPath { get }
   
   var downloadDestinationURLParameters: URLParameters { get }
   

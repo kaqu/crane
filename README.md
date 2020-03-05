@@ -4,6 +4,8 @@ Crane is a Swift library that allows you to build compact network clients in a d
 
 **Work in progress... public api is yet subject to change.**
 
+# OUT OF DATE
+
 ## Example
 
 Let's have a quick look with few examples.

@@ -14,6 +14,8 @@ public enum NetworkError: Error {
   case unableToEncodeRequestBody(reason: Error)
   /// Making request failed
   case unableToMakeRequest(reason: Error)
+  /// Request timed out
+  case timeout
   /// Received response is not valid/expected
   case invalidResponse
   /// Received http status code is not valid/expected

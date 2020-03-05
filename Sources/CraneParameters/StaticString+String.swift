@@ -1,3 +1,3 @@
-internal extension StaticString {
+public extension StaticString {
   var string: String { self.description }
 }

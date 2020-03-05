@@ -1,8 +1,8 @@
 import Foundation
 
 /// Minimal NetworkSession implementation using Foundation.URLSession.
-public final class URLNetworkSession: SessionBase {
-  
+public final class URLNetworkSession: SessionContext {
+
   public let urlComponents: URLComponents
   
   private let urlSession: URLSession

@@ -1,4 +1,10 @@
 import XCTest
 @testable import Crane
 
-final class CraneTests: XCTestCase {}
+
+final class CraneTests: XCTestCase {
+  
+  func test() {
+    
+  }
+}

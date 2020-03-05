@@ -4,7 +4,7 @@ import Foundation
 /// Works as context provided to all request done through it.
 /// Might be used to persist data between requests.
 /// Intended to use with NetworkRequest instances.
-public protocol NetworkSession: SessionBase {
+public protocol NetworkSession: SessionContext {
   /// Executes given request expecting network response according to
   /// request description in context of this session.
   /// - parameter request: network request to make

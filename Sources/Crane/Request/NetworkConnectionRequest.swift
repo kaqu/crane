@@ -1,5 +1,5 @@
 /// Request expecting connection with server allowing sending/receiving data..
-public protocol NetworkConnectionRequest: RequestBase where Session: NetworkConnectionSession, Body == Void {
+public protocol NetworkConnectionRequest: Request where Session: NetworkConnectionSession, Body == Void {
   // MARK: - Type specification
   /// Connection type associated and expected for this request
   typealias Connection = NetworkConnection<Self>

@@ -4,7 +4,7 @@ import Foundation.NSURL
 /// Works as context provided to all request done through it.
 /// Might be used to persist data between requests.
 /// Intended to use with NetworkConnectionRequest instances.
-public protocol NetworkConnectionSession: SessionBase {
+public protocol NetworkConnectionSession: SessionContext {
     /// Executes given request expecting connection access
     /// according to request description in context of this session.
     /// - parameter request: network request to make
