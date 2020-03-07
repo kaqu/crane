@@ -1,8 +1,9 @@
 import CraneParameters
 
-public enum URLError: Error {
-  case invalidURL
-  case invalidEncoding
+public enum HTTPError: Error {
+  case invalidHeader
+  case invalidResponse
+  case invalidRequest
   case missingParameter(ParameterName)
   case invalidParameter(ParameterName, value: String)
 }

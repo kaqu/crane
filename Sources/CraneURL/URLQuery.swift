@@ -1,49 +1,13 @@
-import Foundation
 import CraneParameters
 
 public struct URLQuery {
 
-  public enum Item: Hashable {
-    
-    case item(String, value: String)
-    case parameter(AnyParameter)
-    
-    fileprivate var name: String {
-      switch self {
-      case let .item(name, _):
-        return name
-      case let .parameter(parameter):
-        return parameter.name
-      }
-    }
-    
-    fileprivate var value: String? {
-      switch self {
-      case let .item(_, value):
-        return value
-      case let .parameter(parameter):
-        return parameter.getAny().map(String.init(describing:))
-      }
-    }
-    
-    public static func == (lhs: URLQuery.Item, rhs: URLQuery.Item) -> Bool {
-      lhs.name == rhs.name
-    }
-    
-    public func hash(into hasher: inout Hasher) {
-      hasher.combine(name)
-    }
-  }
+  public typealias Item = (name: String, value: ValueOrParameter)
 
-  private var store: Set<Item> = .init()
+  private var items: Array<Item> = .init()
   
   public var parameters: Parameters {
-    .init(store.compactMap {
-      switch $0 {
-      case let .parameter(param): return param
-      case .item: return nil
-      }
-    })
+    .init(items.compactMap(\.value.parameter))
   }
 
   public func updated(with other: URLQuery) -> URLQuery {
@@ -53,121 +17,59 @@ public struct URLQuery {
   }
   
   public mutating func update(with other: URLQuery) {
-    other.store.forEach { store.update(with: $0) }
+    other.items.forEach { item in
+      if let idx = items.firstIndex(where: { $0.name == item.name }) {
+        items[idx] = item
+      } else {
+        items.append(item)
+      }
+    }
   }
   
-  
   public func resolve(using parameters: Parameters? = nil) -> Result<String, URLError> {
-    let parameters = parameters ?? self.parameters
-    fatalError()
+    let parameters = parameters.map(self.parameters.updated(with:)) ?? self.parameters
+    do {
+      return try .success(
+        items
+        .compactMap { (item: Item) throws -> String? in
+          guard let name = item.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
+          else { throw URLError.invalidEncoding }
+          switch item.value {
+          case let .value(value):
+            guard let value = value.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
+            else { throw URLError.invalidEncoding }
+            return "\(name)=\(value)&"
+          case let .parameter(parameter):
+            if let value = parameters.anyValue(for: parameter) {
+              guard parameters.isValid(parameter.name)
+              else { throw URLError.invalidParameter(parameter.name, value: String(describing: value)) }
+              guard let value = "\(value)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
+              else { throw URLError.invalidEncoding }
+              return "\(name)=\(value)&"
+            } else if parameters.isOptional(parameter.name) {
+              return nil
+            } else {
+              throw URLError.missingParameter(parameter.name)
+            }
+          }
+        }
+        .reduce(into: "", { $0.append($1) })
+        // TODO: check if last `&` is allowed
+      )
+    } catch let error as URLError {
+      return .failure(error)
+    } catch { fatalError("Never") }
   }
 }
 
 extension URLQuery: ExpressibleByDictionaryLiteral {
-  public init(dictionaryLiteral: (String, String)...) {
-    self.store = .init(dictionaryLiteral.map { .item($0, value: $1) })
+  public init(dictionaryLiteral: (String, ValueOrParameter)...) {
+    self.items = .init(dictionaryLiteral.map { (name: $0, value: $1) })
   }
 }
 
 extension URLQuery: ExpressibleByArrayLiteral {
   public init(arrayLiteral: Item...) {
-    self.store = .init(arrayLiteral)
+    self.items = .init(arrayLiteral)
   }
-}
-
-// MARK: - free func
-
-public func param<T>(
-  _ name: ParameterName,
-  of type: T.Type = T.self,
-  value: T? = nil,
-  default: T? = nil
-) -> URLQuery.Item {
-  .parameter(Parameter(name, of: type, value: value, default: `default`))
-}
-
-public func param<T>(
-  _ value: T,
-  for name: ParameterName
-) -> URLQuery.Item {
-  .parameter(Parameter(name, of: T.self, value: value))
-}
-
-// MARK: - operator
-
-public prefix func %<T>(
-  _ tuple: (
-  ParameterName,
-  of: T.Type,
-  value: T,
-  default: T
-  )
-) -> URLQuery.Item {
-  .parameter(Parameter(tuple.0, of: tuple.1, value: tuple.2, default: tuple.3))
-}
-
-public prefix func %<T>(
-  _ tuple: (
-  ParameterName,
-  of: T.Type,
-  value: T
-  )
-) -> URLQuery.Item {
-  .parameter(Parameter(tuple.0, of: tuple.1, value: tuple.2))
-}
-
-public prefix func %<T>(
-  _ tuple: (
-  ParameterName,
-  of: T.Type,
-  default: T
-  )
-) -> URLQuery.Item {
-  .parameter(Parameter(tuple.0, of: tuple.1, default: tuple.2))
-}
-
-public prefix func %<T>(
-  _ tuple: (
-  ParameterName,
-  value: T,
-  default: T
-  )
-) -> URLQuery.Item {
-  .parameter(Parameter(tuple.0, of: T.self, value: tuple.1, default: tuple.2))
-}
-
-public prefix func %<T>(
-  _ tuple: (
-  ParameterName,
-  value: T
-  )
-) -> URLQuery.Item {
-  .parameter(Parameter(tuple.0, of: T.self, value: tuple.1))
-}
-
-public prefix func %<T>(
-  _ tuple: (
-  ParameterName,
-  default: T
-  )
-) -> URLQuery.Item {
-  .parameter(Parameter(tuple.0, of: T.self, default: tuple.1))
-}
-
-public prefix func %<T>(
-  _ tuple: (
-  ParameterName,
-  of: T.Type
-  )
-) -> URLQuery.Item {
-  .parameter(Parameter(tuple.0, of: tuple.1))
-}
-
-public prefix func %<T>(
-  _ tuple: (
-  T,
-  for: ParameterName
-  )
-) -> URLQuery.Item {
-  .parameter(Parameter(tuple.1, of: T.self, value: tuple.0))
 }

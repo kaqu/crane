@@ -51,7 +51,9 @@ public struct Parameter<Value>: AnyParameter {
   
   public func get<T>(_ type: T.Type = T.self) -> T? {
     assert(
-      T.self == Value.self,
+      T.self == Value.self
+      || (T.self as? AnyOptional.Type)?.wrappedType == Value.self
+      || (Value.self as? AnyOptional.Type)?.wrappedType == T.self,
       "Value type `\(T.self)` is not matching parameter \"\(name)\" of `\(Value.self)`"
     )
     guard let value = value else { return nil }
@@ -98,17 +100,25 @@ public struct Parameters {
   public func isValid(_ parameterName: ParameterName) -> Bool {
     parameters.first(where: { $0.name == parameterName })?.isValid ?? false
   }
+  
+  public func isOptional(_ parameter: AnyParameter) -> Bool {
+    isOptional(parameter.name)
+  }
+  
+  public func isOptional(_ parameterName: ParameterName) -> Bool {
+    parameters.first(where: { $0.name == parameterName })?.isOptional ?? true
+  }
 }
 
 // MARK: - access
 
 public extension Parameters {
   func value<Value>(for parameter: Parameter<Value>) -> Value? {
-    value(of: Value.self, for: parameter.name)
+    value(of: Value.self, for: parameter.name) ?? parameter.get()
   }
   
   func value<Value>(for parameter: AnyParameter) -> Value? {
-    value(of: Value.self, for: parameter.name)
+    value(of: Value.self, for: parameter.name) ?? parameter.get(Value.self)
   }
   
   func value<Value>(of type: Value.Type = Value.self, for name: ParameterName) -> Value? {
@@ -119,10 +129,12 @@ public extension Parameters {
     guard let storedParameter = parameters.first(where: { $0.name == parameter.name })
     else { return nil }
     assert(
-      parameter.type == storedParameter.type,
+      parameter.type == storedParameter.type
+      || (storedParameter.type as? AnyOptional.Type)?.wrappedType == parameter.type
+      || (parameter.type as? AnyOptional.Type)?.wrappedType == storedParameter.type,
       "Value type `\(parameter.type)` is not matching parameter \"\(storedParameter.name)\" of `\(storedParameter.type)`"
     )
-    return storedParameter.getAny()
+    return storedParameter.getAny() ?? parameter.getAny()
   }
   
   subscript<Value>(_ parameter: Parameter<Value>) -> Value? {
