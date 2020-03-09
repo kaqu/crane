@@ -40,10 +40,10 @@ public struct URLQuery {
             else { throw URLError.invalidEncoding }
             return "\(name)=\(value)&"
           case let .parameter(parameter):
-            if let value = parameters.anyValue(for: parameter) {
+            if let stringValue = parameters.stringValue(for: parameter) {
               guard parameters.isValid(parameter.name)
-              else { throw URLError.invalidParameter(parameter.name, value: String(describing: value)) }
-              guard let value = "\(value)".addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
+              else { throw URLError.invalidParameter(parameter.name, error: nil) }
+              guard let value = stringValue.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
               else { throw URLError.invalidEncoding }
               return "\(name)=\(value)&"
             } else if parameters.isOptional(parameter.name) {

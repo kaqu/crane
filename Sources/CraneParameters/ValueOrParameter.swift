@@ -15,28 +15,6 @@ public enum ValueOrParameter {
       return param
     }
   }
-  
-  public func value(using parameter: AnyParameter? = nil) -> String? {
-    switch self {
-    case let .value(value):
-      return value
-    case let .parameter(param):
-      return (parameter?.getAny() ?? param.getAny()).map(String.init(describing:))
-    }
-  }
-  
-  public func value(using parameters: Parameters? = nil) -> String? {
-    switch self {
-    case let .value(value):
-      return value
-    case let .parameter(param):
-      guard let parameters = parameters
-      else {
-        return param.getAny().map(String.init(describing:))
-      }
-      return parameters.anyValue(for: param).map(String.init(describing:))
-    }
-  }
 }
 
 // MARK: - literal

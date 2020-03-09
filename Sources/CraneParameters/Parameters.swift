@@ -1,82 +1,3 @@
-// MARK: - parameter
-
-public typealias ParameterName = String
-
-public protocol AnyParameter {
-  var name: ParameterName { get }
-  var type: Any.Type { get }
-  var isOptional: Bool { get }
-  var isValid: Bool { get }
-  func get<T>(_ type: T.Type) -> T?
-  func getAny() -> Any?
-  mutating func set<T>(_ value: T)
-}
-
-public struct Parameter<Value>: AnyParameter {
-  public let name: ParameterName
-  public var type: Any.Type { Value.self }
-  public var defaultValue: Value?
-  public var value: Value? {
-    get { _value ?? defaultValue }
-    set { _value = newValue }
-  }
-  private var _value: Value?
-  
-  public init(
-    _ name: ParameterName,
-    of: Value.Type = Value.self,
-    value: Value? = nil,
-    default: Value? = nil
-  ) {
-    self.name = name
-    self.defaultValue = `default`
-    self._value = value
-  }
-  
-  public init(_ tuple: (Value, for: ParameterName)) {
-    self.init(tuple.1, value: tuple.0)
-  }
-  
-  public init(_ tuple: (ParameterName, Value)) {
-    self.init(tuple.0, value: tuple.1)
-  }
-  
-  public init(_ tuple: (ParameterName, of: Value.Type)) {
-    self.init(tuple.0, of: tuple.1)
-  }
-  
-  public init(_ tuple: (ParameterName, of: Value.Type, default: Value)) {
-    self.init(tuple.0, of: tuple.1, default: tuple.2)
-  }
-  
-  public func get<T>(_ type: T.Type = T.self) -> T? {
-    assert(
-      T.self == Value.self
-      || (T.self as? AnyOptional.Type)?.wrappedType == Value.self
-      || (Value.self as? AnyOptional.Type)?.wrappedType == T.self,
-      "Value type `\(T.self)` is not matching parameter \"\(name)\" of `\(Value.self)`"
-    )
-    guard let value = value else { return nil }
-    return value as? T // At this place T have to be same as Value
-  }
-  
-  public func getAny() -> Any? { value }
-  
-  public mutating func set<T>(_ value: T) {
-    guard let value = value as? Value
-      else {
-        return assertionFailure(
-          "Value type `\(T.self)` is not matching parameter \"\(name)\" of `\(Value.self)`"
-        )
-    }
-    self.value = value
-  }
-  
-  public var isOptional: Bool { (Value.self as? AnyOptional.Type) != nil }
-  public var isValid: Bool { isOptional || value != nil } // TODO: allow custom validators
-}
-
-// MARK: - parameters
 public struct Parameters {
   
   private var parameters: Array<AnyParameter> = .init()
@@ -113,33 +34,61 @@ public struct Parameters {
 // MARK: - access
 
 public extension Parameters {
-  func value<Value>(for parameter: Parameter<Value>) -> Value? {
-    value(of: Value.self, for: parameter.name) ?? parameter.get()
+  func value<Value>(for parameter: Parameter<Value>) -> Result<Value, ParameterError> {
+    value(of: Value.self, for: parameter.name)
+    .flatMapError { error in
+      if case .missing = error {
+        return parameter.get()
+      } else {
+        return .failure(error)
+      }
+    }
   }
   
-  func value<Value>(for parameter: AnyParameter) -> Value? {
-    value(of: Value.self, for: parameter.name) ?? parameter.get(Value.self)
+  func value<Value>(
+    of type: Value.Type = Value.self,
+    for parameter: AnyParameter
+  ) -> Result<Value, ParameterError> {
+    value(of: Value.self, for: parameter.name)
+    .flatMapError { error in
+      if case .missing = error {
+        return parameter.get(Value.self)
+      } else {
+        return .failure(error)
+      }
+    }
   }
   
-  func value<Value>(of type: Value.Type = Value.self, for name: ParameterName) -> Value? {
-    parameters.first(where: { $0.name == name })?.get(type)
+  func value<Value>(
+    of type: Value.Type = Value.self,
+    for name: ParameterName
+  ) -> Result<Value, ParameterError> {
+    parameters
+      .first(where: { $0.name == name })
+      .map { $0.get(type) }
+      ?? .failure(.missing(name))
   }
   
-  func anyValue(for parameter: AnyParameter) -> Any? {
-    guard let storedParameter = parameters.first(where: { $0.name == parameter.name })
-    else { return nil }
-    assert(
-      parameter.type == storedParameter.type
-      || (storedParameter.type as? AnyOptional.Type)?.wrappedType == parameter.type
-      || (parameter.type as? AnyOptional.Type)?.wrappedType == storedParameter.type,
-      "Value type `\(parameter.type)` is not matching parameter \"\(storedParameter.name)\" of `\(storedParameter.type)`"
-    )
-    return storedParameter.getAny() ?? parameter.getAny()
+  func stringValue(
+    for parameter: AnyParameter
+  ) -> String? {
+    stringValue(for: parameter.name)
   }
   
+  func stringValue(
+    for name: ParameterName
+  ) -> String? {
+    parameters
+    .first(where: { $0.name == name })
+    .flatMap { $0.stringValue }
+  }
+
   subscript<Value>(_ parameter: Parameter<Value>) -> Value? {
     get {
-      value(for: parameter)
+      switch value(for: parameter) {
+      case let .success(value): return value
+      case .failure: return nil
+      }
     }
     set {
       set(value: newValue as Any, for: parameter)
@@ -148,7 +97,10 @@ public extension Parameters {
   
   subscript<Value>(_ parameter: AnyParameter) -> Value? {
     get {
-      value(for: parameter)
+      switch value(of: Value.self, for: parameter) {
+      case let .success(value): return value
+      case .failure: return nil
+      }
     }
     set {
       set(value: newValue as Any, for: parameter)
@@ -157,7 +109,10 @@ public extension Parameters {
   
   subscript<Value>(_ parameterName: ParameterName) -> Value? {
     get {
-      value(for: parameterName)
+      switch value(of: Value.self, for: parameterName) {
+      case let .success(value): return value
+      case .failure: return nil
+      }
     }
     set {
       set(value: newValue as Any, for: parameterName)
@@ -276,101 +231,3 @@ public enum ParametersBuilder {
   }
 }
 
-// MARK: - free func
-
-public func param<T>(
-  _ name: ParameterName,
-  of type: T.Type = T.self,
-  value: T? = nil,
-  default: T? = nil
-) -> AnyParameter {
-  Parameter(name, of: type, value: value, default: `default`)
-}
-
-public func param<T>(
-  _ value: T,
-  for name: ParameterName
-) -> AnyParameter {
-  Parameter(name, of: T.self, value: value)
-}
-
-// MARK: - operator
-
-prefix operator %
-
-public prefix func %<T>(
-  _ tuple: (
-  ParameterName,
-  of: T.Type,
-  value: T,
-  default: T
-  )
-) -> AnyParameter {
-  Parameter(tuple.0, of: tuple.1, value: tuple.2, default: tuple.3)
-}
-
-public prefix func %<T>(
-  _ tuple: (
-  ParameterName,
-  of: T.Type,
-  value: T
-  )
-) -> AnyParameter {
-  Parameter(tuple.0, of: tuple.1, value: tuple.2)
-}
-
-public prefix func %<T>(
-  _ tuple: (
-  ParameterName,
-  of: T.Type,
-  default: T
-  )
-) -> AnyParameter {
-  Parameter(tuple.0, of: tuple.1, default: tuple.2)
-}
-
-public prefix func %<T>(
-  _ tuple: (
-  ParameterName,
-  value: T,
-  default: T
-  )
-) -> AnyParameter {
-  Parameter(tuple.0, of: T.self, value: tuple.1, default: tuple.2)
-}
-
-public prefix func %<T>(
-  _ tuple: (
-  ParameterName,
-  value: T
-  )
-) -> AnyParameter {
-  Parameter(tuple.0, of: T.self, value: tuple.1)
-}
-
-public prefix func %<T>(
-  _ tuple: (
-  ParameterName,
-  default: T
-  )
-) -> AnyParameter {
-  Parameter(tuple.0, of: T.self, default: tuple.1)
-}
-
-public prefix func %<T>(
-  _ tuple: (
-  ParameterName,
-  of: T.Type
-  )
-) -> AnyParameter {
-  Parameter(tuple.0, of: tuple.1)
-}
-
-public prefix func %<T>(
-  _ tuple: (
-  T,
-  for: ParameterName
-  )
-) -> AnyParameter {
-  Parameter(tuple.1, of: T.self, value: tuple.0)
-}

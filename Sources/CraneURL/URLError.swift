@@ -4,5 +4,5 @@ public enum URLError: Error {
   case invalidURL
   case invalidEncoding
   case missingParameter(ParameterName)
-  case invalidParameter(ParameterName, value: String)
+  case invalidParameter(ParameterName, error: Error?)
 }

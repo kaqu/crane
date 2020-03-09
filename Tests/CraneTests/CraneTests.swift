@@ -24,12 +24,13 @@ enum TestCall: NetworkCall {
     }
     
     static var path: URLPath = ["/anything", %("userID", of: Int.self)]
+    static var query: URLQuery = ["some": %("some", of: String.self, default: "None")]
   }
 
   enum Response: NetworkResponse {
     case string(String)
     static func from(_ response: HTTPResponse) -> Result<TestCall.Response, NetworkError> {
-      .success(.string(String(data: response.body, encoding: .utf8) ?? "N/A"))
+      .success(.string("\(response.statusCode.rawValue): " + (String(data: response.body, encoding: .utf8) ?? "N/A")))
     }
   }
 }

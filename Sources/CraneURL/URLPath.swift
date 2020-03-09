@@ -35,10 +35,10 @@ public struct URLPath {
             .reduce(into: "", { $0.append("/\($1)") })
             .addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)
           case let .parameter(parameter):
-            if let value = parameters.anyValue(for: parameter) {
+            if let valueString = parameters.stringValue(for: parameter) {
               guard parameters.isValid(parameter.name)
-              else { throw URLError.invalidParameter(parameter.name, value: String(describing: value)) }
-              return "/\(value)".addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)
+              else { throw URLError.invalidParameter(parameter.name, error: nil) }
+              return "/\(valueString)".addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)
             } else if parameters.isOptional(parameter.name) {
               return nil
             } else {

@@ -48,14 +48,28 @@ public extension NetworkRequest {
     with parameters: Parameters
   ) -> Result<URL, NetworkError> {
     // TODO: FIXME: base - scheme/host/port - just handle it...
-    return URL.using(
-      scheme: parameters.value(for: "scheme") ?? "https",
-      host: parameters.value(for: "host")!,
-      port: parameters.value(for: "port"),
-      path: path,
-      query: query,
-      with: parameters
-    ).mapError { NetworkError.urlError($0) }
+    return parameters.value(of: String.self, for: "host")
+    .mapError {
+      switch $0 {
+      case let .missing(parameterName):
+        return NetworkError.urlError(.missingParameter(parameterName))
+      case let .invalid(parameterName, error: error):
+        return NetworkError.urlError(.invalidParameter(parameterName, error: error))
+      case let .wrongType(parameterName, _):
+        return NetworkError.urlError(.invalidParameter(parameterName, error: $0))
+      }
+    }
+    .flatMap { host in
+      URL.using(
+        scheme: (try? parameters.value(for: "scheme").get()) ?? "https",
+        host: host,
+        port: try? parameters.value(for: "port").get(),
+        path: path,
+        query: query,
+        with: parameters
+      ).mapError { NetworkError.urlError($0) }
+    }
+    
   }
   
   static func httpRequest(

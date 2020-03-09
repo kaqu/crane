@@ -44,10 +44,10 @@ public struct HTTPHeaders {
           case let .value(value):
             headerValue = value
           case let .parameter(parameter):
-            if let value = parameters.anyValue(for: parameter) {
+            if let valueString = parameters.stringValue(for: parameter) {
               guard parameters.isValid(parameter.name)
-              else { throw HTTPError.invalidParameter(parameter.name, value: String(describing: value)) }
-              headerValue = String(describing: value)
+              else { throw HTTPError.invalidParameter(parameter.name, value: valueString) }
+              headerValue = valueString
             } else if parameters.isOptional(parameter.name) {
               return nil
             } else {
