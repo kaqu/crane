@@ -7,7 +7,7 @@ public struct URLQuery {
   private var items: Array<Item> = .init()
   
   public var parameters: Parameters {
-    .init(items.compactMap(\.value.parameter))
+    .init(items.compactMap { $0.value.parameter })
   }
 
   public func updated(with other: URLQuery) -> URLQuery {

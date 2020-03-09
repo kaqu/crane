@@ -21,7 +21,7 @@ extension HTTPMethod: RawRepresentable {
     case "OPTIONS": self = .options
     case "HEAD": self = .head
     case let method:
-      guard method.allSatisfy(\.isASCII) else {
+      guard method.allSatisfy({ $0.isASCII }) else {
         return nil
       }
       self = .custom(method)

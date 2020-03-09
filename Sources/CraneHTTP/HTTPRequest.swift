@@ -1,4 +1,5 @@
-import Foundation
+import Foundation.NSData
+import Foundation.NSURL
 
 /// Struct represention of http request.
 /// It is used as intermediate representation for requests allowing to
@@ -7,15 +8,15 @@ import Foundation
 /// Version of http is intentionally omitted as session implementation detail.
 public struct HTTPRequest {
 
-  public var method: HTTPMethod
+  public var method: String
   public var url: URL
-  public var headers: HTTPHeaders
+  public var headers: Dictionary<String, String>
   public var body: Data
 
   public init(
-    method: HTTPMethod = .get,
+    method: String = "GET",
     url: URL,
-    headers: HTTPHeaders = [:],
+    headers: Dictionary<String, String> = [:],
     body: Data = .init()
   ) {
     self.method = method

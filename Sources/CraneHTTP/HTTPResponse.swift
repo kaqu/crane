@@ -1,4 +1,5 @@
-import Foundation
+import Foundation.NSData
+import Foundation.NSURL
 
 /// Struct represention of http response.
 /// It is used as intermediate representation for responses allowing to
@@ -9,13 +10,13 @@ public struct HTTPResponse {
   
   public var url: URL
   public var statusCode: HTTPStatusCode
-  public var headers: HTTPHeaders
+  public var headers: Dictionary<String, String>
   public var body: Data
 
   public init(
     url: URL,
     statusCode: HTTPStatusCode,
-    headers: HTTPHeaders,
+    headers: Dictionary<String, String>,
     body: Data
   ) {
     self.url = url

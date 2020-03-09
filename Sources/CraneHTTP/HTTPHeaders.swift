@@ -7,13 +7,15 @@ public struct HTTPHeaders {
   private var headers: Array<Header> = .init()
   
   public init(dict: Dictionary<String, String>) {
-    self.headers = dict.map { key, value in
-      (name: key, value: .value(value))
-    }
+    self.headers = dict.map { (name: $0, value: .value($1)) }
+  }
+  
+  public init(_ headers: Array<Header>) {
+    self.headers = headers
   }
   
   public var parameters: Parameters {
-    .init(headers.compactMap(\.value.parameter))
+    .init(headers.compactMap { $0.value.parameter })
   }
 
   public func updated(with other: HTTPHeaders) -> HTTPHeaders {

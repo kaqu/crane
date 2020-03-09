@@ -1,19 +1,10 @@
-import Foundation
-
-/// Abstraction over any HTTP network response.
-/// Used as part of NetworkRequest description.
-/// Can be used to describe structure of response.
 public protocol NetworkResponse {
-  /// Function used to create instance of response from raw HTTP response.
-  /// - parameter response: raw http response received from network
-  /// - returns: result of received response interpretation
   static func from(_ response: HTTPResponse) -> Result<Self, NetworkError>
 }
 
 // MARK: - JSON response
-/// HTTP response with JSON body.
+
 public protocol JSONNetworkResponse: NetworkResponse, Decodable {
-  /// Decoder used to decode json for response body.
   static var jsonDecoder: JSONDecoder { get }
 }
 

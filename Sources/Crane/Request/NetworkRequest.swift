@@ -1,34 +1,100 @@
-import Foundation
+import Foundation.NSData
+import Foundation.NSDate
 
-/// Basic request expecting some response.
-public protocol NetworkRequest: Request where Session: NetworkSession {
+import CraneHTTP
+import CraneURL
+
+public protocol NetworkRequest {
   // MARK: - Type specification
-  /// Response type associated and expected for this request
-  associatedtype Response: NetworkResponse
-  // MARK: - Response
-  /// Fuction processing received response. Might be used to update session.
-  /// Default implementation will use plain Response constructor without any additional operations.
-  /// - parameter response: HTTP response to be interpreted
-  /// - parameter session: instance of specific session executing request
-  /// - returns: result of response interpretation and processing.
-  static func response(from response: HTTPResponse, in session: Session) -> Result<Response, NetworkError>
+  associatedtype Body
+  // MARK: - Instance request parts
+  var parameters: Parameters { get } // final parameters
+  var body: Body { get }
+  static func encodeBody(_ body: Body, with parameters: Parameters) -> Result<Data, Error>
+  // MARK: - Request configuration
+  static var timeout: TimeInterval { get }
+  // MARK: - Base request part
+  static var method: HTTPMethod { get }
+  static var path: URLPath { get }
+  static var query: URLQuery { get }
+  static var headers: HTTPHeaders { get }
+  // MARK: - Final request parts
+  static func httpRequest(for request: Self, with parameters: Parameters) -> Result<HTTPRequest, NetworkError>
+  static func url(for request: Self, with parameters: Parameters) -> Result<URL, NetworkError>
+  static func parameters(for request: Self, with parameters: Parameters) -> Parameters // parameters merge
 }
 
 // MARK: - Defaults
 public extension NetworkRequest {
   
-  static func response(
-    from response: HTTPResponse,
-    in session: Session
-  ) -> Result<Response, NetworkError> {
-    Response.from(response)
+  var parameters: Parameters { [] }
+  
+  // all requested parameters
+  static var parameters: Parameters {
+    path.parameters
+    .updated(with: query.parameters)
+    .updated(with: headers.parameters)
+  }
+  
+  static var timeout: TimeInterval { 30 }
+  
+  static var method: HTTPMethod { .get }
+  static var path: URLPath { "/" }
+  static var query: URLQuery { [] }
+  static var headers: HTTPHeaders { [] }
+  
+  static func url(
+    for request: Self,
+    with parameters: Parameters
+  ) -> Result<URL, NetworkError> {
+    // TODO: FIXME: base - scheme/host/port - just handle it...
+    return URL.using(
+      scheme: parameters.value(for: "scheme") ?? "https",
+      host: parameters.value(for: "host")!,
+      port: parameters.value(for: "port"),
+      path: path,
+      query: query,
+      with: parameters
+    ).mapError { NetworkError.urlError($0) }
+  }
+  
+  static func httpRequest(
+    for request: Self,
+    with parameters: Parameters
+  ) -> Result<HTTPRequest, NetworkError> {
+    return url(for: request, with: parameters)
+    .flatMap { url in
+      headers.resolve(using: parameters)
+      .mapError { NetworkError.httpError($0) }
+      .flatMap { headersDict in
+        encodeBody(request.body, with: parameters)
+        .map { bodyData in
+          HTTPRequest.init(method: method.rawValue, url: url, headers: headersDict, body: bodyData)
+        }
+        .mapError { NetworkError.unableToEncodeRequestBody(reason: $0) }
+      }
+    }
+  }
+  
+  static func parameters(
+    for request: Self,
+    with parameters: Parameters
+  ) -> Parameters {
+    Self.parameters
+    .updated(with: parameters)
+    .updated(with: request.parameters)
   }
 }
 
+// MARK: - Void body
+public extension NetworkRequest where Body == Void {
+  static func encodeBody(_ httpBody: Body, with parameters: Parameters) -> Result<Data, Error> { .success(.init()) }
+  var body: Body { Void() }
+}
+
 // MARK: - JSON request
-/// Basic request with JSON body expecting some response.
+
 public protocol JSONNetworkRequest: NetworkRequest where Body: Encodable {
-  /// Encoder used to encode json for request body.
   static var jsonEncoder: JSONEncoder { get }
 }
 
@@ -37,7 +103,7 @@ private let defaultJSONEncoder: JSONEncoder = .init()
 public extension JSONNetworkRequest {
   static var jsonEncoder: JSONEncoder { defaultJSONEncoder }
   static var httpHeaders: HTTPHeaders { ["content-type": "application/json"] }
-  static func encodeBody(_ httpBody: Body) -> Result<Data, Error> {
-    Result{ try jsonEncoder.encode(httpBody) }
+  static func encodeBody(_ httpBody: Body, with parameters: Parameters) -> Result<Data, Error> {
+    Result { try jsonEncoder.encode(httpBody) }
   }
 }

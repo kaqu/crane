@@ -9,7 +9,7 @@ public struct URLPath {
   }
   
   public var parameters: Parameters {
-    .init(parts.compactMap(\.parameter))
+    .init(parts.compactMap { $0.parameter})
   }
 
   public mutating func append(_ other: URLPath) {
