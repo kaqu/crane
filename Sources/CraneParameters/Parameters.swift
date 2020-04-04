@@ -8,10 +8,18 @@ public struct Parameters {
     self.parameters = parameters
   }
   
-  public var isValid: Bool {
+  public var allValid: Bool {
     parameters.reduce(into: true, { result, parameter in
       result = result && parameter.isValid
     })
+  }
+  
+  public func validate(_ parameter: AnyParameter) -> Result<Void, Error> {
+    validate(parameter.name)
+  }
+  
+  public func validate(_ parameterName: ParameterName) -> Result<Void, Error> {
+    parameters.first(where: { $0.name == parameterName })?.validate() ?? .failure(ParameterError.missing(parameterName))
   }
   
   public func isValid(_ parameter: AnyParameter) -> Bool {
@@ -52,7 +60,7 @@ public extension Parameters {
     value(of: Value.self, for: parameter.name)
     .flatMapError { error in
       if case .missing = error {
-        return parameter.get(Value.self)
+        return parameter.get(Value.self, allowInvalid: false)
       } else {
         return .failure(error)
       }
@@ -65,7 +73,7 @@ public extension Parameters {
   ) -> Result<Value, ParameterError> {
     parameters
       .first(where: { $0.name == name })
-      .map { $0.get(type) }
+      .map { $0.get(type, allowInvalid: false) }
       ?? .failure(.missing(name))
   }
   
@@ -123,31 +131,44 @@ public extension Parameters {
 // MARK: - update
 
 public extension Parameters {
-  mutating func update(from parameters: Parameters) {
-    parameters.parameters.forEach { self.insert($0) }
+  mutating func update(with parameters: Parameters) -> Result<Void, ParameterError> {
+    let revertCopy = self
+    for parameter in parameters.parameters {
+      switch update(parameter) {
+      case .success:
+        continue
+      case let .failure(error):
+        self = revertCopy
+        return .failure(error)
+      }
+    }
+    return .success(())
   }
   
-  mutating func update(parameter: AnyParameter) { // function builder fails to catch that
-    insert(parameter)
+  @discardableResult mutating func update(_ parameter: AnyParameter) -> Result<Void, ParameterError> { // function builder fails to catch that
+    if let index = parameters.firstIndex(where: { $0.name == parameter.name }) {
+      return parameters[index].update(using: parameter)
+    } else {
+      parameters.append(parameter)
+      return .success(())
+    }
   }
   
-  mutating func update(@ParametersBuilder _ parametersBuilder: () -> Parameters) {
-    update(from: parametersBuilder())
+  mutating func update(@ParametersBuilder _ parametersBuilder: () -> Parameters) -> Result<Void, ParameterError> {
+    update(with: parametersBuilder())
   }
   
-  func updated(with parameters: Parameters) -> Parameters {
+  func updated(with parameters: Parameters) -> Result<Parameters, ParameterError> {
     var copy = self
-    parameters.parameters.forEach { copy.insert($0) }
-    return copy
+    return copy.update(with: parameters).map { _ in copy }
   }
   
-  func updated(with parameter: AnyParameter) -> Parameters { // function builder fails to catch that
+  func updated(with parameter: AnyParameter) -> Result<Parameters, ParameterError> { // function builder fails to catch that
     var copy = self
-    copy.insert(parameter)
-    return copy
+    return copy.update(parameter).map { copy }
   }
   
-  func updated(@ParametersBuilder _ parametersBuilder: () -> Parameters) -> Parameters {
+  func updated(@ParametersBuilder _ parametersBuilder: () -> Parameters) -> Result<Parameters, ParameterError> {
     updated(with: parametersBuilder())
   }
   
@@ -172,7 +193,7 @@ public extension Parameters {
   }
   
   mutating func insert<Value>(_ value: Value, for name: ParameterName) {
-    insert(Parameter(name, value: value))
+    insert(Parameter(name, value: value, validator: Optional<(Value) -> Bool>.none))
   }
   
   mutating func remove(_ parameter: AnyParameter) {

@@ -5,6 +5,5 @@ public enum HTTPError: Error {
   case invalidRequest
   case invalidResponse
   
-  case missingParameter(ParameterName)
-  case invalidParameter(ParameterName, value: String)
+  case parameterError(ParameterError)
 }

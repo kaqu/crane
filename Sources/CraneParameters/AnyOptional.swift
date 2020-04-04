@@ -1,20 +1,22 @@
 internal protocol AnyOptional {
-  var string: String { get }
   static var wrappedType: Any.Type { get }
+  var stringValue: String? { get }
 }
 
 extension Optional: AnyOptional {
-  var string: String {
+  internal static var wrappedType: Any.Type { Wrapped.self }
+  internal var stringValue: String? {
     switch self {
-    case let .some(wrapped): return String(describing: wrapped)
-    case .none: return ""
+    case let .some(wrapped):
+      return String(describing: wrapped)
+    case .none:
+      return nil
     }
   }
-  internal static var wrappedType: Any.Type { Wrapped.self }
 }
 
-internal func anyOptionalString(from any: Any) -> String {
+internal func nonOptionalStringValue(of any: Any) -> String? {
   guard let optional = any as? AnyOptional
   else { return String(describing: any) }
-  return optional.string
+  return optional.stringValue
 }

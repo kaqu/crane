@@ -2,12 +2,12 @@ import CraneParameters
 
 public struct HTTPHeaders {
 
-  public typealias Header = (name: String, value: ValueOrParameter)
+  public typealias Header = (name: String, value: StringOrParameter)
 
   private var headers: Array<Header> = .init()
   
   public init(dict: Dictionary<String, String>) {
-    self.headers = dict.map { (name: $0, value: .value($1)) }
+    self.headers = dict.map { (name: $0, value: .string($1)) }
   }
   
   public init(_ headers: Array<Header>) {
@@ -35,36 +35,35 @@ public struct HTTPHeaders {
   }
   
   public func resolve(using parameters: Parameters? = nil) -> Result<Dictionary<String, String>, HTTPError> {
-    let parameters = parameters.map(self.parameters.updated(with:)) ?? self.parameters
-    do {
-      return try .success(Dictionary<String, String>(uniqueKeysWithValues:
-        headers.compactMap { (header: Header) throws -> (key: String, value: String)? in
-          let headerValue: String
-          switch header.value {
-          case let .value(value):
-            headerValue = value
-          case let .parameter(parameter):
-            if let valueString = parameters.stringValue(for: parameter) {
-              guard parameters.isValid(parameter.name)
-              else { throw HTTPError.invalidParameter(parameter.name, value: valueString) }
-              headerValue = valueString
-            } else if parameters.isOptional(parameter.name) {
-              return nil
-            } else {
-              throw HTTPError.missingParameter(parameter.name)
+    switch parameters.map(self.parameters.updated(with:)) ?? .success(self.parameters) {
+    case let .success(parameters):
+      do {
+        return try .success(Dictionary<String, String>(uniqueKeysWithValues:
+          headers.compactMap { (header: Header) throws -> (key: String, value: String)? in
+            switch header.value {
+            case let .string(value):
+              return (key: header.name, value: value)
+            case let .parameter(parameter):
+              switch parameters.validate(parameter.name) {
+              case .success:
+                return parameters.stringValue(for: parameter).map { (key: header.name, value: $0) }
+              case let .failure(validationError):
+                throw HTTPError.parameterError(.invalid(parameter.name, error: validationError))
+              }
             }
           }
-          return (key: header.name, value: headerValue)
-        }
-      ))
-    } catch let error as HTTPError {
-      return .failure(error)
-    } catch { fatalError("Never") }
+        ))
+      } catch let error as HTTPError {
+        return .failure(error)
+      } catch { fatalError("Never") }
+    case let .failure(error):
+      return .failure(HTTPError.parameterError(error))
+    }
   }
 }
 
 extension HTTPHeaders: ExpressibleByDictionaryLiteral {
-  public init(dictionaryLiteral: (String, ValueOrParameter)...) {
+  public init(dictionaryLiteral: (String, StringOrParameter)...) {
     self.headers = .init(dictionaryLiteral.map { (name: $0, value: $1) })
   }
 }

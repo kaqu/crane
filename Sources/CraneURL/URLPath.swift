@@ -2,9 +2,9 @@ import CraneParameters
 
 public struct URLPath {
 
-  private var parts: Array<ValueOrParameter>
+  private var parts: Array<StringOrParameter>
   
-  fileprivate init(parts: Array<ValueOrParameter>) {
+  fileprivate init(parts: Array<StringOrParameter>) {
     self.parts = parts
   }
   
@@ -23,45 +23,51 @@ public struct URLPath {
   }
   
   public func resolve(using parameters: Parameters? = nil) -> Result<String, URLError> {
-    let parameters = parameters.map(self.parameters.updated(with:)) ?? self.parameters
-    do {
-      return try .success(
-        parts
-        .compactMap { (part: ValueOrParameter) throws -> String? in
-          switch part {
-          case let .value(string):
-            return string
-            .split(separator: "/")
-            .reduce(into: "", { $0.append("/\($1)") })
-            .addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)
-          case let .parameter(parameter):
-            if let valueString = parameters.stringValue(for: parameter) {
-              guard parameters.isValid(parameter.name)
-              else { throw URLError.invalidParameter(parameter.name, error: nil) }
-              return "/\(valueString)".addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)
-            } else if parameters.isOptional(parameter.name) {
-              return nil
-            } else {
-              throw URLError.missingParameter(parameter.name)
+    switch parameters.map(self.parameters.updated(with:)) ?? .success(self.parameters) {
+    case let .success(parameters):
+      do {
+        return try .success(
+          parts
+          .compactMap { (part: StringOrParameter) throws -> String? in
+            switch part {
+            case let .string(string):
+              guard let value = string
+                .split(separator: "/")
+                .reduce(into: "", { $0.append("/\($1)") })
+                .addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)
+              else { throw URLError.invalidEncoding }
+              return value
+            case let .parameter(parameter):
+              switch parameters.validate(parameter.name) {
+              case .success:
+                guard let rawValue = parameters.stringValue(for: parameter) else { return nil }
+                guard let value = rawValue.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)
+                else { throw URLError.invalidEncoding }
+                return "/\(value)"
+              case let .failure(validationError):
+                throw URLError.parameterError(.invalid(parameter.name, error: validationError))
+              }
             }
           }
-        }
-        .reduce(into: "", { $0.append($1) })
-      )
-    } catch let error as URLError {
-      return .failure(error)
-    } catch { fatalError("Never") }
+          .reduce(into: "", { $0.append($1) })
+        )
+      } catch let error as URLError {
+        return .failure(error)
+      } catch { fatalError("Never") }
+    case let .failure(error):
+      return .failure(URLError.parameterError(error))
+    }
   }
 }
 
 extension URLPath: ExpressibleByStringLiteral {
   public init(stringLiteral: String) {
-    self.init(parts: [.value(stringLiteral)])
+    self.init(parts: [.string(stringLiteral)])
   }
 }
 
 extension URLPath: ExpressibleByArrayLiteral {
-  public init(arrayLiteral parts: ValueOrParameter...) {
+  public init(arrayLiteral parts: StringOrParameter...) {
     self.init(parts: parts.map { $0 })
   }
 }
@@ -74,7 +80,7 @@ extension URLPath {
 
 @_functionBuilder
 public enum URLPathTemplateBuilder {
-  public static func buildBlock(_ parts: ValueOrParameter...) -> URLPath {
+  public static func buildBlock(_ parts: StringOrParameter...) -> URLPath {
     .init(parts: parts.map { $0 } )
   }
 }

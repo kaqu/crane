@@ -2,7 +2,7 @@ import CraneParameters
 
 public struct URLQuery {
 
-  public typealias Item = (name: String, value: ValueOrParameter)
+  public typealias Item = (name: String, value: StringOrParameter)
 
   private var items: Array<Item> = .init()
   
@@ -27,43 +27,45 @@ public struct URLQuery {
   }
   
   public func resolve(using parameters: Parameters? = nil) -> Result<String, URLError> {
-    let parameters = parameters.map(self.parameters.updated(with:)) ?? self.parameters
-    do {
-      return try .success(
-        items
-        .compactMap { (item: Item) throws -> String? in
-          guard let name = item.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
-          else { throw URLError.invalidEncoding }
-          switch item.value {
-          case let .value(value):
-            guard let value = value.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
+    switch parameters.map(self.parameters.updated(with:)) ?? .success(self.parameters) {
+    case let .success(parameters):
+      do {
+        return try .success(
+          items
+          .compactMap { (item: Item) throws -> String? in
+            guard let name = item.name.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
             else { throw URLError.invalidEncoding }
-            return "\(name)=\(value)&"
-          case let .parameter(parameter):
-            if let stringValue = parameters.stringValue(for: parameter) {
-              guard parameters.isValid(parameter.name)
-              else { throw URLError.invalidParameter(parameter.name, error: nil) }
-              guard let value = stringValue.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
+            switch item.value {
+            case let .string(value):
+              guard let value = value.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
               else { throw URLError.invalidEncoding }
               return "\(name)=\(value)&"
-            } else if parameters.isOptional(parameter.name) {
-              return nil
-            } else {
-              throw URLError.missingParameter(parameter.name)
+            case let .parameter(parameter):
+              switch parameters.validate(parameter.name) {
+              case .success:
+                guard let rawValue = parameters.stringValue(for: parameter) else { return nil }
+                guard let value = rawValue.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
+                else { throw URLError.invalidEncoding }
+                return "\(name)=\(value)&"
+              case let .failure(validationError):
+                throw URLError.parameterError(.invalid(parameter.name, error: validationError))
+              }
             }
           }
-        }
-        .reduce(into: "", { $0.append($1) })
-        // TODO: check if last `&` is allowed
-      )
-    } catch let error as URLError {
-      return .failure(error)
-    } catch { fatalError("Never") }
+          .reduce(into: "", { $0.append($1) })
+          // TODO: check if last `&` is allowed
+        )
+      } catch let error as URLError {
+        return .failure(error)
+      } catch { fatalError("Never") }
+    case let .failure(error):
+      return .failure(URLError.parameterError(error))
+    }
   }
 }
 
 extension URLQuery: ExpressibleByDictionaryLiteral {
-  public init(dictionaryLiteral: (String, ValueOrParameter)...) {
+  public init(dictionaryLiteral: (String, StringOrParameter)...) {
     self.items = .init(dictionaryLiteral.map { (name: $0, value: $1) })
   }
 }

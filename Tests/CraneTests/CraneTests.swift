@@ -6,7 +6,7 @@ final class CraneTests: XCTestCase {
   
   func test() {
     let session: URLNetworkSession = .init(host: "httpbin.org")
-    session.make(TestCall.self, .init(userID: 10)) { (result) in
+    session.make(TestCall.self, .init(userID: 100)) { (result) in
       print(result)
     }
     sleep(3)
@@ -23,7 +23,7 @@ enum TestCall: NetworkCall {
       parameters = [%(userID, for: "userID")]
     }
     
-    static var path: URLPath = ["/anything", %("userID", of: Int.self)]
+    static var path: URLPath = ["/anything", %("userID", of: Int.self, validator: { $0 > 99 })]
     static var query: URLQuery = ["some": %("some", of: String.self, default: "None")]
   }
 

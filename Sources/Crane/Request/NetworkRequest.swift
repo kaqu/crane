@@ -21,7 +21,7 @@ public protocol NetworkRequest {
   // MARK: - Final request parts
   static func httpRequest(for request: Self, with parameters: Parameters) -> Result<HTTPRequest, NetworkError>
   static func url(for request: Self, with parameters: Parameters) -> Result<URL, NetworkError>
-  static func parameters(for request: Self, with parameters: Parameters) -> Parameters // parameters merge
+  static func parameters(for request: Self, with parameters: Parameters) -> Result<Parameters, ParameterError> // parameters merge
 }
 
 // MARK: - Defaults
@@ -30,10 +30,10 @@ public extension NetworkRequest {
   var parameters: Parameters { [] }
   
   // all requested parameters
-  static var parameters: Parameters {
+  static var parameters: Result<Parameters, ParameterError> {
     path.parameters
     .updated(with: query.parameters)
-    .updated(with: headers.parameters)
+    .flatMap { $0.updated(with: headers.parameters) }
   }
   
   static var timeout: TimeInterval { 30 }
@@ -47,23 +47,22 @@ public extension NetworkRequest {
     for request: Self,
     with parameters: Parameters
   ) -> Result<URL, NetworkError> {
-    // TODO: FIXME: base - scheme/host/port - just handle it...
-    return parameters.value(of: String.self, for: "host")
-    .mapError {
-      switch $0 {
-      case let .missing(parameterName):
-        return NetworkError.urlError(.missingParameter(parameterName))
-      case let .invalid(parameterName, error: error):
-        return NetworkError.urlError(.invalidParameter(parameterName, error: error))
-      case let .wrongType(parameterName, _):
-        return NetworkError.urlError(.invalidParameter(parameterName, error: $0))
-      }
+    parameters.value(of: String.self, for: "host")
+      .flatMap { host in
+        parameters.value(of: String?.self, for: "scheme")
+          .flatMap { scheme in
+            parameters.value(of: Int?.self, for: "port")
+              .map { port in
+                (scheme: scheme, host: host, port: port)
+            }
+        }
     }
-    .flatMap { host in
+    .mapError(NetworkError.parameterError)
+    .flatMap { (scheme, host, port) in
       URL.using(
-        scheme: (try? parameters.value(for: "scheme").get()) ?? "https",
+        scheme: scheme ?? "https",
         host: host,
-        port: try? parameters.value(for: "port").get(),
+        port: port,
         path: path,
         query: query,
         with: parameters
@@ -76,27 +75,32 @@ public extension NetworkRequest {
     for request: Self,
     with parameters: Parameters
   ) -> Result<HTTPRequest, NetworkError> {
-    return url(for: request, with: parameters)
-    .flatMap { url in
-      headers.resolve(using: parameters)
-      .mapError { NetworkError.httpError($0) }
-      .flatMap { headersDict in
-        encodeBody(request.body, with: parameters)
-        .map { bodyData in
-          HTTPRequest.init(method: method.rawValue, url: url, headers: headersDict, body: bodyData)
+    self.parameters(for: request, with: parameters)
+    .mapError(NetworkError.parameterError)
+    .flatMap { finalParameters in
+      url(for: request, with: finalParameters)
+      .flatMap { url in
+        headers.resolve(using: finalParameters)
+        .mapError { NetworkError.httpError($0) }
+        .flatMap { headersDict in
+          encodeBody(request.body, with: finalParameters)
+          .map { bodyData in
+            HTTPRequest.init(method: method.rawValue, url: url, headers: headersDict, body: bodyData)
+          }
+          .mapError { NetworkError.unableToEncodeRequestBody(reason: $0) }
         }
-        .mapError { NetworkError.unableToEncodeRequestBody(reason: $0) }
       }
     }
+    
   }
   
   static func parameters(
     for request: Self,
     with parameters: Parameters
-  ) -> Parameters {
+  ) -> Result<Parameters, ParameterError> {
     Self.parameters
-    .updated(with: parameters)
-    .updated(with: request.parameters)
+    .flatMap { $0.updated(with: parameters) }
+    .flatMap { $0.updated(with: request.parameters) }
   }
 }
 
