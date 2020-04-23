@@ -10,6 +10,7 @@ public enum NetworkError: Error {
   case unableToDecodeResponse(HTTPResponse, reason: Error)
   case timeout
   case canceled
+  case noInternet
   case parameterError(ParameterError)
   case sessionClosed
   case internalInconsistency

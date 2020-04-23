@@ -43,8 +43,20 @@ extension URLNetworkSession: NetworkSession {
     foundationRequest.httpBody = request.body
     foundationRequest.timeoutInterval = timeout
     urlSession.dataTask(with: foundationRequest) { data, response, error in
-      if let error = error { // TODO: handle specific errors - timeout, no internet, cancel
-        callback(.failure(NetworkError.unableToMakeRequest(reason: error)))
+      if let error = error as NSError? {
+        guard error.domain == NSURLErrorDomain else {
+          return callback(.failure(NetworkError.other(error)))
+        }
+        switch error.code {
+        case NSURLErrorCancelled:
+          callback(.failure(NetworkError.canceled))
+        case NSURLErrorNotConnectedToInternet:
+          callback(.failure(NetworkError.noInternet))
+        case NSURLErrorTimedOut:
+          callback(.failure(NetworkError.timeout))
+        case _:
+          callback(.failure(NetworkError.other(error)))
+        }
       } else if let response = response as? HTTPURLResponse {
         callback(
           .success(
