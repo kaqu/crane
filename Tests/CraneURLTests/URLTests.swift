@@ -5,12 +5,11 @@ import XCTest
 final class URLTests: XCTestCase {
   
   func test() {
-    let res = URL.using(
+    let url = URL(
       host: "example.org",
-      path: ["test", %("id", of: Int.self, default: 1), "path"],
-      query: ["some": "value", "name": %("name", of: String?.self)],
-      with: Parameters(%("test", for: "name"))
+      path: "static/path/with space",
+      query: ["some": "value"]
     )
-    print(res)
+    XCTAssertEqual(url?.description, "https://example.org/static/path/with%2520space?some=value")
   }
 }

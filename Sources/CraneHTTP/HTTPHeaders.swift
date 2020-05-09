@@ -1,5 +1,3 @@
-import CraneParameters
-
 public struct HTTPHeaders {
 
   public typealias Header = (name: String, value: StringOrParameter)
@@ -73,3 +71,24 @@ extension HTTPHeaders: ExpressibleByArrayLiteral {
     self.headers = .init(arrayLiteral)
   }
 }
+
+public protocol HTTPHeaderValue {
+  var httpHeaderValue: String { get }
+}
+
+extension URLPathComponent where Self: LosslessStringConvertible {
+  public var urlPathComponent: String {
+    guard
+      !description.contains("/"),
+      let encoded = description.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)
+      else { fatalError("Cannot encode \"\(description)\" as http header value") }
+    return encoded
+  }
+}
+extension Bool: URLPathComponent {}
+extension String: URLPathComponent {}
+extension Substring: URLPathComponent {}
+extension UInt: URLPathComponent {}
+extension Int: URLPathComponent {}
+extension Float: URLPathComponent {}
+extension Double: URLPathComponent {}

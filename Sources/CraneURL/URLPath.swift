@@ -1,86 +1,74 @@
-import CraneParameters
-
 public struct URLPath {
-
-  private var parts: Array<StringOrParameter>
   
-  fileprivate init(parts: Array<StringOrParameter>) {
-    self.parts = parts
+  private var components: Array<URLPathComponent>
+  
+  public init(_ components: URLPathComponent...) {
+    self.components = components
   }
   
-  public var parameters: Parameters {
-    .init(parts.compactMap { $0.parameter})
+  public init(_ string: String) {
+    self.components
+      = string
+      .split(separator: "/")
+      .map {
+        guard
+          !$0.urlPathComponent.contains("/"),
+          let encoded = $0.urlPathComponent.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)
+        else { fatalError("Cannot encode \"\($0.urlPathComponent)\" as url path component") }
+        return encoded
+    }
   }
-
+  
+  public mutating func append(_ component: URLPathComponent) {
+    components.append(component)
+  }
+  
+  public func appending(_ component: URLPathComponent) -> URLPath{
+    var copy = self
+    copy.components.append(component)
+    return copy
+  }
+  
   public mutating func append(_ other: URLPath) {
-    parts.append(contentsOf: other.parts)
+    components.append(contentsOf: other.components)
   }
   
   public func appending(_ other: URLPath) -> URLPath{
     var copy = self
-    copy.parts.append(contentsOf: other.parts)
+    copy.components.append(contentsOf: other.components)
     return copy
   }
   
-  public func resolve(using parameters: Parameters? = nil) -> Result<String, URLError> {
-    switch parameters.map(self.parameters.updated(with:)) ?? .success(self.parameters) {
-    case let .success(parameters):
-      do {
-        return try .success(
-          parts
-          .compactMap { (part: StringOrParameter) throws -> String? in
-            switch part {
-            case let .string(string):
-              guard let value = string
-                .split(separator: "/")
-                .reduce(into: "", { $0.append("/\($1)") })
-                .addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)
-              else { throw URLError.invalidEncoding }
-              return value
-            case let .parameter(parameter):
-              switch parameters.validate(parameter.name) {
-              case .success:
-                guard let rawValue = parameters.stringValue(for: parameter) else { return nil }
-                guard let value = rawValue.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)
-                else { throw URLError.invalidEncoding }
-                return "/\(value)"
-              case let .failure(validationError):
-                throw URLError.parameterError(.invalid(parameter.name, error: validationError))
-              }
-            }
-          }
-          .reduce(into: "", { $0.append($1) })
-        )
-      } catch let error as URLError {
-        return .failure(error)
-      } catch { fatalError("Never") }
-    case let .failure(error):
-      return .failure(URLError.parameterError(error))
-    }
-  }
+  public var pathString: String { components.reduce(into: "", { $0.append("/\($1)") }) }
+}
+
+extension URLPath: CustomStringConvertible {
+  public var description: String { pathString }
 }
 
 extension URLPath: ExpressibleByStringLiteral {
   public init(stringLiteral: String) {
-    self.init(parts: [.string(stringLiteral)])
+    self.init(stringLiteral)
   }
 }
 
 extension URLPath: ExpressibleByArrayLiteral {
-  public init(arrayLiteral parts: StringOrParameter...) {
-    self.init(parts: parts.map { $0 })
+  public init(arrayLiteral components: URLPathComponent...) {
+    self.components = components
   }
 }
 
-extension URLPath {
-  public init(@URLPathTemplateBuilder _ builder: () -> URLPath) {
-    self = builder()
-  }
+public protocol URLPathComponent {
+  var urlPathComponent: String { get }
 }
 
-@_functionBuilder
-public enum URLPathTemplateBuilder {
-  public static func buildBlock(_ parts: StringOrParameter...) -> URLPath {
-    .init(parts: parts.map { $0 } )
-  }
+extension URLPathComponent where Self: LosslessStringConvertible {
+  public var urlPathComponent: String { description }
 }
+extension Bool: URLPathComponent {}
+extension String: URLPathComponent {}
+extension Substring: URLPathComponent {}
+extension UInt: URLPathComponent {}
+extension Int: URLPathComponent {}
+extension Float: URLPathComponent {}
+extension Double: URLPathComponent {}

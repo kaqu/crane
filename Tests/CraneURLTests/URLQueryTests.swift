@@ -5,13 +5,12 @@ import XCTest
 final class URLQueryTests: XCTestCase {
   
   func test() {
-    let query: URLQuery = ["id": %("id", of: Int.self), "test": "value enc"]
-    let res = query.resolve(using: Parameters {
-      %(42, for: "id")
-      %("aaa", for: "name")
-    })
-    guard case .success("id=42&test=value%20enc&") = res else {
-      return XCTFail("\(res)")
-    }
+    var query: URLQuery = ["id": 12, "name": "Blob", "remove": "nil"]
+    XCTAssert(query["id"] == 12)
+    XCTAssert(query["name"] == "Blob")
+    query["pi"] = 3.14
+    XCTAssert(query["pi"] == 3.14)
+    query["remove"] = nil as String?
+    XCTAssert(query["remove"] as String? == nil)
   }
 }

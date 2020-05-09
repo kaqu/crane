@@ -1,5 +1,5 @@
-import Foundation.NSData
-import Foundation.NSDate
+import struct Foundation.NSData.Data
+import struct Foundation.NSDate.TimeInterval
 
 import CraneHTTP
 import CraneURL
