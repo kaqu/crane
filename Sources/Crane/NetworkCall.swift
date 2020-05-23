@@ -4,11 +4,11 @@ public protocol NetworkCall {
 }
 
 public extension NetworkCall {
-  static func httpRequest(for request: Request, with parameters: Parameters) -> Result<HTTPRequest, NetworkError> {
-    Request.httpRequest(for: request, with: parameters)
+  static func httpRequest<Context: NetworkRequestContext>(for request: Request, in context: Context) -> Result<HTTPRequest, NetworkError> {
+    Request.httpRequest(for: request, in: context)
   }
   
-  static func response(from response: HTTPResponse) -> Result<Response, NetworkError> {
-    Response.from(response)
+  static func response<Context>(from response: HTTPResponse, in context: Context) -> Result<Response, NetworkError> {
+    Response.from(response, in: context)
   }
 }

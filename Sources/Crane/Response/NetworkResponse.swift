@@ -1,5 +1,5 @@
 public protocol NetworkResponse {
-  static func from(_ response: HTTPResponse) -> Result<Self, NetworkError>
+  static func from<Context>(_ response: HTTPResponse, in context: Context) -> Result<Self, NetworkError>
 }
 
 // MARK: - JSON response
@@ -12,10 +12,12 @@ private let defaultJSONDecoder: JSONDecoder = .init()
 
 public extension JSONNetworkResponse {
   static var jsonDecoder: JSONDecoder { defaultJSONDecoder }
-  static func from(_ response: HTTPResponse) -> Result<Self, NetworkError> {
-    Result { try jsonDecoder.decode(Self.self, from: response.body) }
-      .mapError { error in
-        NetworkError.unableToDecodeResponse(response, reason: error)
-      }
+  static func from<Context>(_ response: HTTPResponse, in context: Context) -> Result<Self, NetworkError> {
+    Result {
+      try jsonDecoder.decode(Self.self, from: response.body)
+    }
+    .mapError { error in
+      NetworkError.unableToDecodeResponse(response, reason: error)
+    }
   }
 }

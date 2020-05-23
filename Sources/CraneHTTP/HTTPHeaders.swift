@@ -1,94 +1,83 @@
 public struct HTTPHeaders {
+  
+  public private(set) var headers: Set<HTTPHeader> = .init()
+  
+  public init(_ headers: HTTPHeader...) {
+    self.headers = Set(headers)
+  }
+  
+  public init(_ dictionary: [String: String]) {
+    self.headers = Set(dictionary.map { HTTPHeader(name: $0.key, value: $0.value) })
+  }
+  
+  public var dictionary: [String: String] {
+    Dictionary(uniqueKeysWithValues: headers.map { ($0.name, $0.value.httpHeaderValue) })
+  }
+}
 
-  public typealias Header = (name: String, value: StringOrParameter)
-
-  private var headers: Array<Header> = .init()
-  
-  public init(dict: Dictionary<String, String>) {
-    self.headers = dict.map { (name: $0, value: .string($1)) }
-  }
-  
-  public init(_ headers: Array<Header>) {
-    self.headers = headers
-  }
-  
-  public var parameters: Parameters {
-    .init(headers.compactMap { $0.value.parameter })
-  }
-
-  public func updated(with other: HTTPHeaders) -> HTTPHeaders {
-    var copy = self
-    copy.update(with: other)
-    return copy
-  }
-  
-  public mutating func update(with other: HTTPHeaders) {
-    other.headers.forEach { item in // TODO: headers are not acctually set...
-      if let idx = headers.firstIndex(where: { $0.name == item.name }) {
-        headers[idx] = item
-      } else {
-        headers.append(item)
-      }
-    }
-  }
-  
-  public func resolve(using parameters: Parameters? = nil) -> Result<Dictionary<String, String>, HTTPError> {
-    switch parameters.map(self.parameters.updated(with:)) ?? .success(self.parameters) {
-    case let .success(parameters):
-      do {
-        return try .success(Dictionary<String, String>(uniqueKeysWithValues:
-          headers.compactMap { (header: Header) throws -> (key: String, value: String)? in
-            switch header.value {
-            case let .string(value):
-              return (key: header.name, value: value)
-            case let .parameter(parameter):
-              switch parameters.validate(parameter.name) {
-              case .success:
-                return parameters.stringValue(for: parameter).map { (key: header.name, value: $0) }
-              case let .failure(validationError):
-                throw HTTPError.parameterError(.invalid(parameter.name, error: validationError))
-              }
-            }
-          }
-        ))
-      } catch let error as HTTPError {
-        return .failure(error)
-      } catch { fatalError("Never") }
-    case let .failure(error):
-      return .failure(HTTPError.parameterError(error))
+public extension HTTPHeaders {
+  subscript<Value: HTTPHeaderValue>(_ name: String) -> Value? {
+    get { (headers.first(where: { $0.name == name })?.value).flatMap(Value.init) }
+    set {
+      _ = newValue.map { headers.update(with: HTTPHeader(name: name, value: $0.httpHeaderValue)) }
+        ?? headers.firstIndex(where: { $0.name == name }).map { headers.remove(at: $0) }
     }
   }
 }
 
 extension HTTPHeaders: ExpressibleByDictionaryLiteral {
-  public init(dictionaryLiteral: (String, StringOrParameter)...) {
-    self.headers = .init(dictionaryLiteral.map { (name: $0, value: $1) })
+  public init(dictionaryLiteral: (String, HTTPHeaderValue)...) {
+    self.headers = .init(dictionaryLiteral.map { HTTPHeader(name: $0, value: $1.httpHeaderValue) })
   }
 }
 
 extension HTTPHeaders: ExpressibleByArrayLiteral {
-  public init(arrayLiteral: Header...) {
+  public init(arrayLiteral: HTTPHeader...) {
     self.headers = .init(arrayLiteral)
   }
 }
 
+extension HTTPHeaders: CustomStringConvertible {
+  public var description: String { dictionary.description }
+}
+
+public struct HTTPHeader: Hashable {
+  public let name: String
+  public var value: String
+  
+  public init(name: String, value: String) {
+    self.name = name
+    self.value = value
+  }
+  
+  public func hash(into hasher: inout Hasher) {
+    hasher.combine(name)
+  }
+  
+  public static func ==(_ lhs: HTTPHeader, _ rhs: HTTPHeader) -> Bool {
+    lhs.name == rhs.name
+  }
+}
+
 public protocol HTTPHeaderValue {
+  init?(httpHeaderValue: String)
   var httpHeaderValue: String { get }
 }
 
-extension URLPathComponent where Self: LosslessStringConvertible {
-  public var urlPathComponent: String {
-    guard
-      !description.contains("/"),
-      let encoded = description.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)
-      else { fatalError("Cannot encode \"\(description)\" as http header value") }
-    return encoded
+extension HTTPHeaderValue where Self: LosslessStringConvertible {
+  
+  public init?(httpHeaderValue: String) {
+    self.init(httpHeaderValue)
   }
+  
+  public var httpHeaderValue: String { description }
 }
-extension Bool: URLPathComponent {}
-extension String: URLPathComponent {}
-extension Substring: URLPathComponent {}
-extension UInt: URLPathComponent {}
-extension Int: URLPathComponent {}
-extension Float: URLPathComponent {}
-extension Double: URLPathComponent {}
+
+extension Bool: HTTPHeaderValue {}
+extension String: HTTPHeaderValue {}
+extension Substring: HTTPHeaderValue {}
+extension UInt: HTTPHeaderValue {}
+extension Int: HTTPHeaderValue {}
+extension Float: HTTPHeaderValue {}
+extension Double: HTTPHeaderValue {}
+

@@ -1,27 +1,45 @@
 import Foundation.NSData
 import Foundation.NSURL
 
-/// Struct represention of http request.
-/// It is used as intermediate representation for requests allowing to
-/// provide custom network stack usage (unrelated to Foundation).
-/// See RFC2616, RFC7230 and RFC7540 for details.
-/// Version of http is intentionally omitted as session implementation detail.
-public struct HTTPRequest {
+//public struct HTTPRequest {
+//
+//  public var url: URL
+//  public var method: HTTPMethod
+//  public var headers: HTTPHeaders
+//  public var body: Data
+//
+//  public init(
+//    method: HTTPMethod = .get,
+//    url: URL,
+//    headers: HTTPHeaders = [:],
+//    body: Data = .init()
+//  ) {
+//    self.method = method
+//    self.url = url
+//    self.headers = headers
+//    self.body = body
+//  }
+//}
 
-  public var method: String
-  public var url: URL
-  public var headers: Dictionary<String, String>
-  public var body: Data
+#warning("TODO: to decide which one")
 
-  public init(
-    method: String = "GET",
+import Foundation.NSURLRequest
+
+public typealias HTTPRequest = URLRequest
+
+public extension URLRequest {
+  init(
+    _ method: HTTPMethod = .get,
     url: URL,
-    headers: Dictionary<String, String> = [:],
+    headers: HTTPHeaders = [:],
     body: Data = .init()
   ) {
-    self.method = method
-    self.url = url
-    self.headers = headers
-    self.body = body
+    self.init(url: url)
+    self.httpMethod = method.rawValue
+    self.allHTTPHeaderFields = headers.dictionary
+    self.httpBody = body
   }
+  
+  var headers: HTTPHeaders { HTTPHeaders(allHTTPHeaderFields ?? [:]) }
+  var method: HTTPMethod { HTTPMethod(rawValue: httpMethod ?? "") ?? .get }
 }
