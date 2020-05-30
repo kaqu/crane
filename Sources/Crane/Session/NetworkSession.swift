@@ -16,7 +16,7 @@ extension NetworkSession {
   @discardableResult
   func make<Request>(
     _ request: Request,
-    _ callback: @escaping ResultCallback<Request.Call.Response, NetworkError>
+    _ callback: @escaping ResultCallback<Request.Call.Response, Request.Call.Error>
   ) -> CancelationToken
   where Request: NetworkCallRequest {
     switch Request.Call.httpRequest(for: request, in: self) {
@@ -24,8 +24,9 @@ extension NetworkSession {
       return make(request: httpRequest, withTimeout: request.timeout) { [weak self] result in
         callback(
           result
+          .mapError(Request.Call.Error.init)
           .flatMap { [weak self] httpResponse in
-            guard let self = self else { return .failure(.sessionClosed)}
+            guard let self = self else { return .failure(Request.Call.Error(from: .sessionClosed)) }
             return Request.Call.response(from: httpResponse, in: self)
           }
         )

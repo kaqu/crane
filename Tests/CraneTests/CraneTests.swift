@@ -32,10 +32,12 @@ enum TestCall: NetworkCall {
     case string(String)
     case customError(Int)
     
-    static func from<Context>(_ response: HTTPResponse, in context: Context) -> Result<TestCall.Response, NetworkError> where Context : NetworkSession {
+    static func from<Context>(_ response: HTTPResponse, in context: Context) -> Result<TestCall.Response, NetworkError> where Context: NetworkSession {
       guard case .ok = response.statusCode
       else { return .success(.customError(response.statusCode.rawValue)) }
       return .success(.string("\(response.statusCode.rawValue): " + (String(data: response.body, encoding: .utf8) ?? "N/A")))
     }
   }
+  
+  typealias Error = NetworkError
 }

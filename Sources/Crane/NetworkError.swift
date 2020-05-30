@@ -2,7 +2,6 @@ import CraneURL
 import CraneHTTP
 
 public enum NetworkError: Error {
-//  case urlError(CraneURL.URLError)
   case invalidURL
   case httpError(HTTPError)
   case unableToEncodeRequestBody(reason: Error)
@@ -12,7 +11,6 @@ public enum NetworkError: Error {
   case timeout
   case canceled
   case noInternet
-//  case parameterError(ParameterError)
   case sessionClosed
   case internalInconsistency
   case other(Error)
