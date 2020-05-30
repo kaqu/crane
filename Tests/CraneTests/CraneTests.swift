@@ -5,7 +5,7 @@ import XCTest
 final class CraneTests: XCTestCase {
   
   func test() {
-    let session: URLNetworkSession = .init(host: "httpbin.org")
+    let session = URLNetworkSession(host: "httpbin.org")
     session.make(TestCall.self, .init(userID: 100)) { (result) in
       print(result)
     }
@@ -17,20 +17,22 @@ final class CraneTests: XCTestCase {
 enum TestCall: NetworkCall {
   struct Request: NetworkRequest {
     typealias Body = Void
-    var parameters: Parameters
     
-    init(userID: Int) {
-      parameters = [%(userID, for: "userID")]
+    var urlPath: URLPath
+    
+    init(userID: Int)  {
+      self.urlPath = URLPath("/anything/\(userID)")
     }
-    
-    static var path: URLPath = ["/anything", %("userID", of: Int.self, validator: { $0 > 99 })]
-    static var query: URLQuery = ["some": %("some", of: String.self, default: "None")]
   }
 
   enum Response: NetworkResponse {
     case string(String)
-    static func from(_ response: HTTPResponse) -> Result<TestCall.Response, NetworkError> {
-      .success(.string("\(response.statusCode.rawValue): " + (String(data: response.body, encoding: .utf8) ?? "N/A")))
+    case customError(Int)
+    
+    static func from<Context>(_ response: HTTPResponse, in context: Context) -> Result<TestCall.Response, NetworkError> where Context : NetworkSession {
+      guard case .ok = response.statusCode
+      else { return .success(.customError(response.statusCode.rawValue)) }
+      return .success(.string("\(response.statusCode.rawValue): " + (String(data: response.body, encoding: .utf8) ?? "N/A")))
     }
   }
 }

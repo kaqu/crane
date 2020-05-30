@@ -9,7 +9,14 @@ public extension URL {
     path: URLPath = [],
     query: URLQuery = []
   ) {
-    guard let url = URLComponents(scheme: scheme, host: host, port: port, path: path, query: query).url
+    guard
+      let url = URLComponents(
+        scheme: scheme,
+        host: host,
+        port: port,
+        path: path,
+        query: query
+      ).url
     else { return nil }
     self = url
   }

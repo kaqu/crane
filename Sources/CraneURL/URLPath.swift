@@ -10,13 +10,7 @@ public struct URLPath {
     self.components
       = string
       .split(separator: "/")
-      .map {
-        guard
-          !$0.urlPathComponent.contains("/"),
-          let encoded = $0.urlPathComponent.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)
-        else { fatalError("Cannot encode \"\($0.urlPathComponent)\" as url path component") }
-        return encoded
-    }
+      .map(\.urlPathComponent)
   }
   
   public mutating func append(_ component: URLPathComponent) {
@@ -39,7 +33,14 @@ public struct URLPath {
     return copy
   }
   
-  public var pathString: String { components.reduce(into: "", { $0.append("/\($1)") }) }
+  public var pathString: String {
+    guard
+      let encoded = components
+        .reduce(into: "", { $0.append("/\($1)") })
+        .addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)
+    else { fatalError("Cannot encode URLPath") }
+    return encoded
+  }
 }
 
 extension URLPath: CustomStringConvertible {

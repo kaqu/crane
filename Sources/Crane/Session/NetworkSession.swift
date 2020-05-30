@@ -1,35 +1,39 @@
-//public protocol NetworkSession {
-//  var parameters: Parameters { get }
-//  func make(
-//    request: HTTPRequest,
-//    withTimeout timeout: TimeInterval,
-//    callback: @escaping ResultCallback<HTTPResponse, NetworkError>
-//  ) // TODO: allow cancelation
-//}
-//
-//extension NetworkSession {
-//  func make<Call: NetworkCall>(
-//    _ call: Call.Type = Call.self,
-//    _ request: Call.Request,
-//    _ callback: @escaping ResultCallback<Call.Response, NetworkError>
-//  ) { // TODO: allow cancelation
-//    switch Call.httpRequest(for: request, with: self.parameters) {
-//    case let .success(httpRequest):
-//      make(request: httpRequest, withTimeout: Call.Request.timeout) { result in
-//        callback(
-//          result
-//            .mapError { (error: Error) -> NetworkError in
-//              switch error {
-//              case let networkError as NetworkError:
-//                return networkError
-//              case _: return .internalInconsistency
-//              }
-//          }
-//          .flatMap { Call.response(from: $0) }
-//        )
-//      }
-//    case let .failure(error):
-//      callback(.failure(error))
-//    }
-//  }
-//}
+import struct Foundation.NSURL.URLComponents
+
+public protocol NetworkSession: AnyObject {
+  var urlBase: URLComponents { get }
+  
+  @discardableResult
+  func make(
+    request: HTTPRequest,
+    withTimeout timeout: TimeInterval,
+    callback: @escaping ResultCallback<HTTPResponse, NetworkError>
+  ) -> CancelationToken
+}
+
+extension NetworkSession {
+
+  @discardableResult
+  func make<Call>(
+    _ call: Call.Type = Call.self,
+    _ request: Call.Request,
+    _ callback: @escaping ResultCallback<Call.Response, NetworkError>
+  ) -> CancelationToken
+  where Call: NetworkCall {
+    switch Call.httpRequest(for: request, in: self) {
+    case let .success(httpRequest):
+      return make(request: httpRequest, withTimeout: request.timeout) { [weak self] result in
+        callback(
+          result
+          .flatMap { [weak self] httpResponse in
+            guard let self = self else { return .failure(.sessionClosed)}
+            return Call.response(from: httpResponse, in: self)
+          }
+        )
+      }
+    case let .failure(error):
+      callback(.failure(error))
+      return CancelationToken {}
+    }
+  }
+}

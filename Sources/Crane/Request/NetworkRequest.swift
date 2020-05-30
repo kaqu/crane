@@ -1,7 +1,3 @@
-public protocol NetworkRequestContext {
-  var baseURL: URL { get }
-}
-
 public protocol NetworkRequest {
   associatedtype Body
   var urlPath: URLPath { get }
@@ -11,11 +7,35 @@ public protocol NetworkRequest {
   var httpBody: Body { get }
   var timeout: TimeInterval { get }
   
-  static func urlQuery<Context: NetworkRequestContext>(for request: Self, in context: Context) -> Result<URLQuery, NetworkError>
-  static func url<Context: NetworkRequestContext>(for request: Self, in context: Context) -> Result<URL, NetworkError>
-  static func httpHeaders<Context: NetworkRequestContext>(for request: Self, in context: Context) -> Result<HTTPHeaders, NetworkError>
-  static func httpBodyData<Context: NetworkRequestContext>(for request: Self, in context: Context) -> Result<Data, NetworkError>
-  static func httpRequest<Context: NetworkRequestContext>(for request: Self, in context: Context) -> Result<HTTPRequest, NetworkError>
+  static func urlQuery<Context>(
+    for request: Self,
+    in context: Context
+  ) -> Result<URLQuery, NetworkError>
+  where Context : NetworkSession
+  
+  static func url<Context>(
+    for request: Self,
+    in context: Context
+  ) -> Result<URL, NetworkError>
+  where Context : NetworkSession
+  
+  static func httpHeaders<Context>(
+    for request: Self,
+    in context: Context
+  ) -> Result<HTTPHeaders, NetworkError>
+  where Context : NetworkSession
+  
+  static func httpBodyData<Context>(
+    for request: Self,
+    in context: Context
+  ) -> Result<Data, NetworkError>
+  where Context : NetworkSession
+  
+  static func httpRequest<Context>(
+    for request: Self,
+    in context: Context
+  ) -> Result<HTTPRequest, NetworkError>
+  where Context : NetworkSession
 }
 
 // MARK: - Defaults
@@ -26,19 +46,43 @@ public extension NetworkRequest {
   var httpHeaders: HTTPHeaders { [:] }
   var timeout: TimeInterval { 30 }
   
-  static func urlQuery<Context: NetworkRequestContext>(for request: Self, in context: Context) -> Result<URLQuery, NetworkError> {
+  static func urlQuery<Context>(
+    for request: Self,
+    in context: Context
+  ) -> Result<URLQuery, NetworkError>
+  where Context : NetworkSession {
     .success(request.urlQuery)
   }
   
-  static func url<Context: NetworkRequestContext>(for request: Self, in context: Context) -> Result<URL, NetworkError> {
-    .success(context.baseURL.appendingPathComponent(request.urlPath.pathString))
+  static func url<Context>(
+    for request: Self,
+    in context: Context
+  ) -> Result<URL, NetworkError>
+  where Context : NetworkSession {
+    urlQuery(for: request, in: context)
+    .flatMap  { query in
+      var urlComponents = context.urlBase
+      urlComponents.path = request.urlPath.pathString
+      urlComponents.query = query.queryString
+      guard let url = urlComponents.url
+      else { return .failure(.invalidURL) }
+      return .success(url)
+    }
   }
   
-  static func httpHeaders<Context: NetworkRequestContext>(for request: Self, in context: Context) -> Result<HTTPHeaders, NetworkError> {
+  static func httpHeaders<Context>(
+    for request: Self,
+    in context: Context
+  ) -> Result<HTTPHeaders, NetworkError>
+  where Context : NetworkSession {
     .success(request.httpHeaders)
   }
   
-  static func httpRequest<Context: NetworkRequestContext>(for request: Self, in context: Context) -> Result<HTTPRequest, NetworkError> {
+  static func httpRequest<Context>(
+    for request: Self,
+    in context: Context
+  ) -> Result<HTTPRequest, NetworkError>
+  where Context : NetworkSession {
     url(for: request, in: context)
     .flatMap { url in
       httpHeaders(for: request, in: context)
@@ -59,7 +103,16 @@ public extension NetworkRequest {
 
 // MARK: - Void request body
 public extension NetworkRequest where Body == Void {
+  
   var httpBody: Body { () }
+  
+  static func httpBodyData<Context>(
+    for request: Self,
+    in context: Context
+  ) -> Result<Data, NetworkError>
+  where Context : NetworkSession {
+    .success(Data())
+  }
 }
 
 // MARK: - JSON request
@@ -72,7 +125,11 @@ private let defaultJSONEncoder: JSONEncoder = .init()
 public extension JSONNetworkRequest {
   static var jsonEncoder: JSONEncoder { defaultJSONEncoder }
   static var httpHeaders: HTTPHeaders { ["content-type": "application/json"] }
-  static func httpBodyData<Context: NetworkRequestContext>(for request: Self, in context: Context) -> Result<Data, NetworkError> {
+  static func httpBodyData<Context>(
+    for request: Self,
+    in context: Context
+  ) -> Result<Data, NetworkError>
+  where Context : NetworkSession {
     Result {
       try jsonEncoder.encode(request.httpBody)
     }

@@ -11,8 +11,10 @@ public struct URLQuery {
   public var queryString: String? {
     guard !items.isEmpty else { return nil }
     return items.reduce(into: "" as String) { result, item in
-      guard let value = item.value?.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
-        else { return assertionFailure("Cannot encode \"\(String(describing: item.value))\" as url query value") }
+      guard
+        let value = item.value?
+          .addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
+      else { return assertionFailure("Cannot encode \"\(String(describing: item.value))\" as url query value") }
       defer { result.append("\(item.name)=\(value)") }
       guard !result.isEmpty else { return }
       result.append("&")
@@ -24,7 +26,8 @@ public extension URLQuery {
   subscript<Value: URLQueryValue>(_ name: String) -> Value? {
     get { items.first(where: { $0.name == name })?.value.flatMap(Value.init) }
     set {
-      _ = newValue.map { items.update(with: URLQueryItem(name: name, value: $0.urlQueryValue)) }
+      _ = newValue
+        .map { items.update(with: URLQueryItem(name: name, value: $0.urlQueryValue)) }
         ?? items.firstIndex(where: { $0.name == name }).map { items.remove(at: $0) }
     }
   }

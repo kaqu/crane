@@ -6,11 +6,11 @@ public struct HTTPHeaders {
     self.headers = Set(headers)
   }
   
-  public init(_ dictionary: [String: String]) {
+  public init(_ dictionary: Dictionary<String, String>) {
     self.headers = Set(dictionary.map { HTTPHeader(name: $0.key, value: $0.value) })
   }
   
-  public var dictionary: [String: String] {
+  public var dictionary: Dictionary<String, String> {
     Dictionary(uniqueKeysWithValues: headers.map { ($0.name, $0.value.httpHeaderValue) })
   }
 }
@@ -19,7 +19,8 @@ public extension HTTPHeaders {
   subscript<Value: HTTPHeaderValue>(_ name: String) -> Value? {
     get { (headers.first(where: { $0.name == name })?.value).flatMap(Value.init) }
     set {
-      _ = newValue.map { headers.update(with: HTTPHeader(name: name, value: $0.httpHeaderValue)) }
+      _ = newValue
+        .map { headers.update(with: HTTPHeader(name: name, value: $0.httpHeaderValue)) }
         ?? headers.firstIndex(where: { $0.name == name }).map { headers.remove(at: $0) }
     }
   }
