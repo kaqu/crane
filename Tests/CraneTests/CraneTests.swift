@@ -8,7 +8,7 @@ final class CraneTests: XCTestCase {
     let session = URLNetworkSession(host: "httpbin.org")
     session.make(TestCall.Request(userID: 100)) { (result) in
       print(result)
-    }
+    }.cancel()
     sleep(3)
   }
 }
@@ -20,7 +20,8 @@ enum TestCall: NetworkCall {
     typealias Body = Void
     
     var urlPath: URLPath
-    
+    var urlQuery: URLQuery = ["some": "default"]
+
     init(userID: Int)  {
       self.urlPath = URLPath("/anything/\(userID)")
     }

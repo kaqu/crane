@@ -1,6 +1,7 @@
 import Foundation
 import CraneHTTP
 import CraneURL
+import Foundation.NSLock
 
 /// Minimal NetworkSession implementation using Foundation.URLSession.
 public final class URLNetworkSession {
@@ -36,7 +37,9 @@ extension URLNetworkSession: NetworkSession {
   ) -> CancelationToken {
     var foundationRequest: URLRequest = request as URLRequest // TODO: to decide in HTTPRequest.swift
     foundationRequest.timeoutInterval = timeout
-    urlSession.dataTask(with: foundationRequest) { data, response, error in
+    let condLock: NSConditionLock = .init(condition: 0)
+    let task = urlSession.dataTask(with: foundationRequest) { data, response, error in
+      guard condLock.tryLock(whenCondition: 0) else { return callback(.failure(NetworkError.canceled)) }
       if let error = error as NSError? {
         guard error.domain == NSURLErrorDomain else {
           return callback(.failure(NetworkError.other(error)))
@@ -65,7 +68,12 @@ extension URLNetworkSession: NetworkSession {
       } else {
         callback(.failure(NetworkError.internalInconsistency))
       }
-    }.resume()
-    return CancelationToken {} // TODO
+    }
+    task.resume()
+    return CancelationToken {
+      condLock.lock()
+      task.cancel()
+      condLock.unlock(withCondition: 1)
+    }
   }
 }
