@@ -6,7 +6,7 @@ final class CraneTests: XCTestCase {
   
   func test() {
     let session = URLNetworkSession(host: "httpbin.org")
-    session.make(TestCall.self, .init(userID: 100)) { (result) in
+    session.make(TestCall.Request(userID: 100)) { (result) in
       print(result)
     }
     sleep(3)
@@ -15,7 +15,8 @@ final class CraneTests: XCTestCase {
 
 
 enum TestCall: NetworkCall {
-  struct Request: NetworkRequest {
+  struct Request: NetworkCallRequest {
+    typealias Call = TestCall
     typealias Body = Void
     
     var urlPath: URLPath

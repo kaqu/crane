@@ -1,9 +1,14 @@
+public protocol NetworkCallRequest: NetworkRequest {
+  associatedtype Call: NetworkCall where Call.Request == Self
+}
+
 public protocol NetworkCall {
-  associatedtype Request: NetworkRequest
+  associatedtype Request: NetworkCallRequest where Request.Call == Self
   associatedtype Response: NetworkResponse
 }
 
 public extension NetworkCall {
+
   static func httpRequest<Context>(
     for request: Request,
     in context: Context
