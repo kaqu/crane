@@ -19,26 +19,3 @@ public struct HTTPRequest {
     self.body = body
   }
 }
-
-//#warning("TODO: to decide which one")
-//
-//import Foundation.NSURLRequest
-//
-//public typealias HTTPRequest = URLRequest
-//
-//public extension URLRequest {
-//  init(
-//    _ method: HTTPMethod = .get,
-//    url: URL,
-//    headers: HTTPHeaders = [:],
-//    body: Data = .init()
-//  ) {
-//    self.init(url: url)
-//    self.httpMethod = method.rawValue
-//    self.allHTTPHeaderFields = headers.dictionary
-//    self.httpBody = body
-//  }
-//
-//  var headers: HTTPHeaders { HTTPHeaders(allHTTPHeaderFields ?? [:]) }
-//  var method: HTTPMethod { HTTPMethod(rawValue: httpMethod ?? "") ?? .get }
-//}

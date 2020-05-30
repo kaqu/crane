@@ -1,26 +1,26 @@
 public protocol NetworkResponse {
-  static func from<Context>(
+  static func from<Session>(
     _ response: HTTPResponse,
-    in context: Context
+    in context: Session
   ) -> Result<Self, NetworkError>
-  where Context: NetworkSession
+  where Session: NetworkSession
 }
 
 // MARK: - JSON response
 
-public protocol JSONNetworkResponse: NetworkResponse, Decodable {
+public protocol JSONBodyNetworkResponse: NetworkResponse, Decodable {
   static var jsonDecoder: JSONDecoder { get }
 }
 
 private let defaultJSONDecoder: JSONDecoder = .init()
 
-public extension JSONNetworkResponse {
+public extension JSONBodyNetworkResponse {
   static var jsonDecoder: JSONDecoder { defaultJSONDecoder }
-  static func from<Context>(
+  static func from<Session>(
     _ response: HTTPResponse,
-    in context: Context
+    in context: Session
   ) -> Result<Self, NetworkError>
-  where Context: NetworkSession {
+  where Session: NetworkSession {
     Result {
       try jsonDecoder.decode(Self.self, from: response.body)
     }

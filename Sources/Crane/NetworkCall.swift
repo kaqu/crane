@@ -6,21 +6,21 @@ public protocol NetworkCall {
 
 public extension NetworkCall {
 
-  static func httpRequest<Context>(
+  static func httpRequest<Session>(
     for request: Request,
-    in context: Context
+    in context: Session
   ) -> Result<HTTPRequest, Error>
-  where Context: NetworkSession {
+  where Session: NetworkSession {
     Request
       .httpRequest(for: request, in: context)
       .mapError(Error.init)
   }
   
-  static func response<Context>(
+  static func response<Session>(
     from response: HTTPResponse,
-    in context: Context
+    in context: Session
   ) -> Result<Response, Error>
-  where Context: NetworkSession {
+  where Session: NetworkSession {
     Response
       .from(response, in: context)
       .mapError(Error.init)
