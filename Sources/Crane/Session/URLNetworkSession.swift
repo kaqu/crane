@@ -71,7 +71,7 @@ extension URLNetworkSession: NetworkSession {
     }
     task.resume()
     return CancelationToken {
-      condLock.lock()
+      guard condLock.try() else { return }
       task.cancel()
       condLock.unlock(withCondition: 1)
     }

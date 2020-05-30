@@ -6,9 +6,10 @@ final class CraneTests: XCTestCase {
   
   func test() {
     let session = URLNetworkSession(host: "httpbin.org")
-    session.make(TestCall.Request(userID: 100)) { (result) in
+    let cancelation = session.make(TestCall.Request(userID: 100)) { (result) in
       print(result)
-    }.cancel()
+    }
+    cancelation.cancel()
     sleep(3)
   }
 }
