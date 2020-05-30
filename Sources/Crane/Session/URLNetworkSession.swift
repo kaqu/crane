@@ -35,7 +35,10 @@ extension URLNetworkSession: NetworkSession {
     withTimeout timeout: TimeInterval,
     callback: @escaping ResultCallback<HTTPResponse, NetworkError>
   ) -> CancelationToken {
-    var foundationRequest: URLRequest = request as URLRequest // TODO: to decide in HTTPRequest.swift
+    var foundationRequest: URLRequest = URLRequest(url: request.url)
+    foundationRequest.httpMethod = request.method.rawValue
+    foundationRequest.allHTTPHeaderFields = request.headers.dictionary
+    foundationRequest.httpBody = request.body
     foundationRequest.timeoutInterval = timeout
     let condLock: NSConditionLock = .init(condition: 0)
     let task = urlSession.dataTask(with: foundationRequest) { data, response, error in
@@ -58,9 +61,9 @@ extension URLNetworkSession: NetworkSession {
         callback(
           .success(
             HTTPResponse(
-              url: response.url ?? request.url!, // TODO: force unwrap?
+              url: response.url ?? request.url,
               statusCode: HTTPStatusCode(rawValue: response.statusCode) ?? .custom(response.statusCode),
-              headers: HTTPHeaders(response.allHeaderFields as! Dictionary<String, String>), // TODO: FIXME:!!!
+              headers: HTTPHeaders(response.allHeaderFields as! Dictionary<String, String>),
               body: data ?? .init()
             )
           )

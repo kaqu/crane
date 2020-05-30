@@ -9,7 +9,7 @@ final class CraneTests: XCTestCase {
     let cancelation = session.make(TestCall.Request(userID: 100)) { (result) in
       print(result)
     }
-    cancelation.cancel()
+//    cancelation.cancel()
     sleep(3)
   }
 }
