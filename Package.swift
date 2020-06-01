@@ -1,4 +1,4 @@
-// swift-tools-version:5.1
+// swift-tools-version:5.2
 
 import PackageDescription
 
@@ -9,14 +9,32 @@ let package = Package(
     .library(
       name: "Crane",
       targets: ["Crane"]),
+    .library(
+      name: "CraneURL",
+      targets: ["CraneURL"]),
+    .library(
+      name: "CraneHTTP",
+      targets: ["CraneHTTP"]),
   ],
   dependencies: [],
   targets: [
     .target(
       name: "Crane",
-      dependencies: []),
+      dependencies: ["CraneURL", "CraneHTTP"]),
     .testTarget(
       name: "CraneTests",
       dependencies: ["Crane"]),
+    .target(
+      name: "CraneURL",
+      dependencies: []),
+    .testTarget(
+      name: "CraneURLTests",
+      dependencies: ["CraneURL"]),
+    .target(
+      name: "CraneHTTP",
+      dependencies: []),
+    .testTarget(
+      name: "CraneHTTPTests",
+      dependencies: ["CraneHTTP"]),
   ]
 )
