@@ -33,10 +33,13 @@ public struct URLPath {
     return copy
   }
   
-  public var pathString: String {
+  public var string: String {
+    components.reduce(into: "", { $0.append("/\($1)") })
+  }
+  
+  public var percentEncodedString: String {
     guard
-      let encoded = components
-        .reduce(into: "", { $0.append("/\($1)") })
+      let encoded = string
         .addingPercentEncoding(withAllowedCharacters: .urlPathAllowed)
     else { fatalError("Cannot encode URLPath") }
     return encoded
@@ -44,7 +47,7 @@ public struct URLPath {
 }
 
 extension URLPath: CustomStringConvertible {
-  public var description: String { pathString }
+  public var description: String { string }
 }
 
 extension URLPath: ExpressibleByStringLiteral {

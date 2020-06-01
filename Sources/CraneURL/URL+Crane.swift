@@ -34,7 +34,7 @@ public extension URLComponents {
     self.scheme = scheme
     self.host = host
     self.port = port
-    self.path = path.pathString
+    self.percentEncodedPath = path.percentEncodedString
     self.query = query.queryString
   }
 }

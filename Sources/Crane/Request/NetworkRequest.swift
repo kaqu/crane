@@ -64,7 +64,7 @@ public extension NetworkRequest {
     urlQuery(for: request, in: context)
     .flatMap  { query in
       var urlComponents = context.urlBase
-      urlComponents.path = request.urlPath.pathString
+      urlComponents.percentEncodedPath = request.urlPath.percentEncodedString
       urlComponents.query = query.queryString
       guard let url = urlComponents.url
       else { return .failure(.invalidURL) }

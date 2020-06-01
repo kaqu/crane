@@ -1,4 +1,5 @@
 public protocol NetworkResponse {
+  
   static func from<Session>(
     _ response: HTTPResponse,
     in context: Session
@@ -9,13 +10,16 @@ public protocol NetworkResponse {
 // MARK: - JSON response
 
 public protocol JSONBodyNetworkResponse: NetworkResponse, Decodable {
+  
   static var jsonDecoder: JSONDecoder { get }
 }
 
 private let defaultJSONDecoder: JSONDecoder = .init()
 
 public extension JSONBodyNetworkResponse {
+  
   static var jsonDecoder: JSONDecoder { defaultJSONDecoder }
+  
   static func from<Session>(
     _ response: HTTPResponse,
     in context: Session
