@@ -10,7 +10,7 @@ public struct URLPath {
     self.components
       = string
       .split(separator: "/")
-      .map(\.urlPathComponent)
+      .map { $0.urlPathComponent }
   }
   
   public mutating func append(_ component: URLPathComponent) {
